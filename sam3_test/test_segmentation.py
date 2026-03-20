@@ -1,70 +1,83 @@
-"""SAM3 segmentation test — capture from RealSense and visualize masks."""
+"""SAM3 segmentation test — uses Sam3FastProcessor (same as sam3_node).
+
+Applies crop_config.yaml if present (same as PoseEstimator).
+"""
 
 import sys
 import os
 import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "sam3"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "phy_core"))
 
 import numpy as np
 import cv2
-import torch
-from PIL import Image
+import yaml
+
+
+CROP_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "crop_config.yaml")
+
+
+def load_crop_config():
+    if not os.path.exists(CROP_CONFIG_PATH):
+        return None
+    with open(CROP_CONFIG_PATH, "r") as f:
+        config = yaml.safe_load(f)
+    c = config["crop"]
+    return c["x1"], c["y1"], c["x2"], c["y2"]
 
 
 def main():
-    from capture_realsense import capture_single_frame
+    from phy_core.sam3 import Sam3FastProcessor, capture_single_frame
+    import pyrealsense2 as rs
 
-    print("=== SAM3 Segmentation Test ===")
-    print(f"Device: {'cuda' if torch.cuda.is_available() else 'cpu'}")
+    print("=== SAM3 Segmentation Test (Sam3FastProcessor) ===")
 
-    # 1. Capture
-    print("\n[1/4] Capturing from RealSense...")
+    # 1. Get intrinsics
+    print("\n[1/4] Getting camera intrinsics...")
+    pipe = rs.pipeline()
+    cfg = rs.config()
+    cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    profile = pipe.start(cfg)
+    intr = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+    pipe.stop()
+    print(f"  fx={intr.fx:.1f} fy={intr.fy:.1f} cx={intr.ppx:.1f} cy={intr.ppy:.1f}")
+
+    # 2. Capture
+    print("\n[2/4] Capturing from RealSense...")
     depth_mm, color_bgr = capture_single_frame()
     print(f"  Color: {color_bgr.shape}, Depth: {depth_mm.shape}")
 
-    # 2. Load model
-    print("\n[2/4] Loading SAM3 model...")
-    t0 = time.perf_counter()
-    from sam3 import build_sam3_image_model
-    from sam3.model.sam3_image_processor import Sam3Processor
+    # 3. Apply crop_config
+    crop = load_crop_config()
+    if crop:
+        x1, y1, x2, y2 = crop
+        print(f"  Crop config: ({x1},{y1})-({x2},{y2}) [{x2-x1}x{y2-y1}]")
+        color_cropped = color_bgr[y1:y2, x1:x2].copy()
+    else:
+        print("  No crop_config.yaml — using full frame")
+        color_cropped = color_bgr
 
-    torch.backends.cudnn.benchmark = True
-    pt_path = "/tmp/sam3_converted.pt"
-    if not os.path.exists(pt_path):
-        from safetensors.torch import load_file
-        sf_path = os.path.expanduser(
-            "~/.cache/huggingface/hub/models--yolain--sam3-safetensors/"
-            "snapshots/eb174af94625028887dfe92d2d8483ca5a5d3336/sam3.safetensors"
-        )
-        state_dict = load_file(sf_path)
-        torch.save({"model": state_dict}, pt_path)
+    # 4. Run segmentation via Sam3FastProcessor
+    print("\n[3/4] Loading Sam3FastProcessor & running segmentation...")
+    threshold = float(sys.argv[1]) if len(sys.argv) > 1 else 0.01
+    print(f"  confidence_threshold={threshold}")
+    processor = Sam3FastProcessor(device="cuda", confidence_threshold=threshold)
 
-    model = build_sam3_image_model(
-        device="cuda", eval_mode=True, compile=True,
-        load_from_HF=False, checkpoint_path=pt_path,
-    )
-    processor = Sam3Processor(model, device="cuda", confidence_threshold=0.01)
-    print(f"  Loaded in {time.perf_counter() - t0:.1f}s")
+    from PIL import Image
+    import torch
 
-    # 3. Run inference
-    print("\n[3/4] Running segmentation (prompt='object')...")
-    rgb = color_bgr[..., ::-1].copy()
+    rgb = color_cropped[..., ::-1].copy()
     pil_image = Image.fromarray(rgb)
 
     # Warmup
-    with torch.amp.autocast('cuda', dtype=torch.float16):
-        state = processor.set_image(pil_image)
-        state = processor.set_text_prompt(prompt="object", state=state)
+    torch.cuda.synchronize()
+    _ = processor.segment(pil_image, prompt="object")
     torch.cuda.synchronize()
 
     # Timed run
     torch.cuda.synchronize()
     t0 = time.perf_counter()
-    with torch.amp.autocast('cuda', dtype=torch.float16):
-        state = processor.set_image(pil_image)
-        state = processor.set_text_prompt(prompt="object", state=state)
+    state = processor.segment(pil_image, prompt="object")
     torch.cuda.synchronize()
     elapsed = (time.perf_counter() - t0) * 1000
 
@@ -77,7 +90,7 @@ def main():
     if scores is not None and len(scores) > 0:
         print(f"  Scores: {scores.cpu().numpy().round(3).tolist()}")
 
-    # 4. Visualize
+    # 5. Visualize
     print("\n[4/4] Saving visualization...")
     out_dir = os.path.join(os.path.dirname(__file__), "output")
     os.makedirs(out_dir, exist_ok=True)
@@ -90,18 +103,32 @@ def main():
             (0, 255, 0), (255, 0, 0), (0, 0, 255),
             (255, 255, 0), (0, 255, 255), (255, 0, 255),
         ]
-        overlay = color_bgr.copy()
+
+        # Overlay on cropped image
+        overlay_crop = color_cropped.copy()
         for i in range(n_masks):
             mask_bool = masks_np[i] > 0.5
             c = colors[i % len(colors)]
-            overlay[mask_bool] = (overlay[mask_bool] * 0.5 + np.array(c) * 0.5).astype(np.uint8)
+            overlay_crop[mask_bool] = (overlay_crop[mask_bool] * 0.5 + np.array(c) * 0.5).astype(np.uint8)
             contours, _ = cv2.findContours(
                 mask_bool.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
             )
-            cv2.drawContours(overlay, contours, -1, c, 2)
+            cv2.drawContours(overlay_crop, contours, -1, c, 2)
 
-        cv2.imwrite(os.path.join(out_dir, "02_overlay.png"), overlay)
-        print(f"  Saved: {out_dir}/01_input.png, 02_overlay.png")
+        # Full frame with crop region + overlay embedded
+        overlay_full = color_bgr.copy()
+        if crop:
+            x1, y1, x2, y2 = crop
+            overlay_full[y1:y2, x1:x2] = overlay_crop
+            cv2.rectangle(overlay_full, (x1, y1), (x2, y2), (255, 255, 255), 2)
+            cv2.putText(overlay_full, f"crop ({x1},{y1})-({x2},{y2})",
+                        (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        else:
+            overlay_full = overlay_crop
+
+        cv2.imwrite(os.path.join(out_dir, "02_overlay_crop.png"), overlay_crop)
+        cv2.imwrite(os.path.join(out_dir, "03_overlay_full.png"), overlay_full)
+        print(f"  Saved: {out_dir}/01_input.png, 02_overlay_crop.png, 03_overlay_full.png")
     else:
         print("  No masks — nothing to visualize.")
 
