@@ -1,6 +1,10 @@
-"""SAM3 perception node.
+"""SAM3 perception node with optimized inference.
 
-Wraps PoseEstimator and capture_single_frame as a single ROS2 GetPose service.
+Wraps Sam3FastProcessor + PoseEstimator as a ROS2 GetPose service.
+Applies autocode-validated optimizations:
+- autocast fp16 + cudnn.benchmark + torch.compile
+- Cached text features
+- Frame reuse (backbone skip)
 
 Services:
     get_pose (GetPose.srv): Detect object and return 6DoF pose.
@@ -17,7 +21,7 @@ from phy_interface.srv import GetPose
 
 
 class Sam3Node(Node):
-    """ROS2 node providing SAM3-based perception via GetPose service."""
+    """ROS2 node providing optimized SAM3-based perception via GetPose service."""
 
     def __init__(self):
         super().__init__('sam3_node')
@@ -25,6 +29,7 @@ class Sam3Node(Node):
         # Declare parameters
         self.declare_parameter('device', 'cuda')
         self.declare_parameter('confidence_threshold', 0.5)
+        self.declare_parameter('frame_skip', 1)
         self.declare_parameter('fx', 0.0)
         self.declare_parameter('fy', 0.0)
         self.declare_parameter('cx', 0.0)
@@ -32,6 +37,7 @@ class Sam3Node(Node):
 
         device = self.get_parameter('device').get_parameter_value().string_value
         confidence = self.get_parameter('confidence_threshold').get_parameter_value().double_value
+        frame_skip = self.get_parameter('frame_skip').get_parameter_value().integer_value
         self.fx = self.get_parameter('fx').get_parameter_value().double_value
         self.fy = self.get_parameter('fy').get_parameter_value().double_value
         self.cx = self.get_parameter('cx').get_parameter_value().double_value
@@ -45,19 +51,19 @@ class Sam3Node(Node):
             )
             raise RuntimeError('Invalid camera intrinsics: fx and fy must be > 0')
 
-        # Load PoseEstimator (SAM3 model loads here, ~10-30s)
+        # Load optimized PoseEstimator
         self.get_logger().info(
-            f'Loading PoseEstimator (device={device}, confidence={confidence})...'
+            f'Loading PoseEstimator (device={device}, confidence={confidence}, '
+            f'frame_skip={frame_skip})...'
         )
-        from pose_estimator import PoseEstimator
+        from phy_core.sam3 import PoseEstimator, capture_single_frame
         self._estimator = PoseEstimator(
-            device=device, confidence_threshold=confidence
+            device=device,
+            confidence_threshold=confidence,
+            frame_skip=frame_skip,
         )
-        self.get_logger().info('PoseEstimator loaded successfully.')
-
-        # Import capture function
-        from capture_realsense import capture_single_frame
         self._capture = capture_single_frame
+        self.get_logger().info('PoseEstimator loaded successfully.')
 
         # Lock for thread safety (SAM3 GPU model is not thread-safe)
         self._lock = threading.Lock()

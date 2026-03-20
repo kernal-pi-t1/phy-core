@@ -17,6 +17,7 @@ sam3_node:
   ros__parameters:
     device: "cuda"
     confidence_threshold: 0.5
+    frame_skip: 1  # 1=no skip, 5=backbone every 5th frame (~60ms effective)
     # Camera intrinsics (RealSense D435 typical values — REPLACE with actual)
     fx: 615.0
     fy: 615.0
