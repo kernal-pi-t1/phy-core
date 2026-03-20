@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-6.2.5, py-1.10.0, pluggy-0.13.0
+cachedir: /home/robot/jm_ws/build/phy_core/.pytest_cache
+rootdir: /home/robot/jm_ws/src/phy_core
+plugins: ament-copyright-0.12.14, ament-pep257-0.12.14, ament-xmllint-0.12.14, ament-lint-0.12.14, ament-flake8-0.12.14, launch-testing-ros-0.19.12, launch-testing-1.0.11, anyio-4.12.1, colcon-core-0.20.1, cov-3.0.0
+collected 24 items
+
+test/test_orchestration_node.py ...............                          [ 62%]
+test/test_sam3_node.py .........                                         [100%]
+
+------- generated xml file: /home/robot/jm_ws/build/phy_core/pytest.xml --------
+============================== 24 passed in 0.22s ==============================

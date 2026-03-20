@@ -1,0 +1,27 @@
+// generated from rosidl_adapter/resource/action.idl.em
+// with input from phy_interface/action/Move.action
+// generated code does not contain a copyright notice
+
+
+module phy_interface {
+  module action {
+    typedef double double__6[6];
+    @verbatim (language="comment", text=
+      "Goal")
+    struct Move_Goal {
+      @verbatim (language="comment", text=
+        "x, y, z, roll, pitch, yaw")
+      double__6 target_pose;
+    };
+    @verbatim (language="comment", text=
+      "Result")
+    struct Move_Result {
+      boolean success;
+    };
+    @verbatim (language="comment", text=
+      "Feedback")
+    struct Move_Feedback {
+      string status;
+    };
+  };
+};

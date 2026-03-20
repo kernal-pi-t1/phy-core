@@ -1,0 +1,8 @@
+{
+  "package_name": "phy_interface",
+  "non_idl_tuples": [
+    "/home/robot/jm_ws/src/phy_interface:srv/Json.srv",
+    "/home/robot/jm_ws/src/phy_interface:srv/GetPose.srv",
+    "/home/robot/jm_ws/src/phy_interface:action/Move.action"
+  ]
+}

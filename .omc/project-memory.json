@@ -1,0 +1,131 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1774031732124,
+  "projectRoot": "/home/robot/jm_ws",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "src"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "__pycache__": {
+      "path": "__pycache__",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1774031732122,
+      "keyFiles": [
+        "capture_realsense.cpython-310.pyc",
+        "pose_estimator.cpython-310.pyc",
+        "select_crop_region.cpython-310.pyc"
+      ]
+    },
+    "build": {
+      "path": "build",
+      "purpose": "Build output",
+      "fileCount": 2,
+      "lastAccessed": 1774031732122,
+      "keyFiles": [
+        "COLCON_IGNORE"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 0,
+      "lastAccessed": 1774031732123,
+      "keyFiles": []
+    },
+    "install": {
+      "path": "install",
+      "purpose": null,
+      "fileCount": 12,
+      "lastAccessed": 1774031732124,
+      "keyFiles": [
+        "COLCON_IGNORE",
+        "_local_setup_util_ps1.py",
+        "_local_setup_util_sh.py",
+        "local_setup.bash",
+        "local_setup.ps1"
+      ]
+    },
+    "log": {
+      "path": "log",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1774031732124,
+      "keyFiles": [
+        "COLCON_IGNORE"
+      ]
+    },
+    "output": {
+      "path": "output",
+      "purpose": null,
+      "fileCount": 27,
+      "lastAccessed": 1774031732124,
+      "keyFiles": [
+        "01_input.png",
+        "02_segmentation_overlay.png",
+        "03_mask_00.png",
+        "03_mask_01.png",
+        "03_mask_02.png"
+      ]
+    },
+    "sam3": {
+      "path": "sam3",
+      "purpose": null,
+      "fileCount": 8,
+      "lastAccessed": 1774031732124,
+      "keyFiles": [
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "MANIFEST.in",
+        "README.md"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1774031732124,
+      "keyFiles": []
+    },
+    "sam3/assets": {
+      "path": "sam3/assets",
+      "purpose": "Static assets",
+      "fileCount": 5,
+      "lastAccessed": 1774031732124,
+      "keyFiles": [
+        "dog.gif",
+        "model_diagram.png",
+        "player.gif"
+      ]
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}

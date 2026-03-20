@@ -1,0 +1,14 @@
+msg/ObjectPose.idl
+msg/ObjectPose.msg
+srv/GetPickPose.idl
+srv/GetPickPose.srv
+srv/GetPickPose_Request.msg
+srv/GetPickPose_Response.msg
+srv/PickPlaceTask.idl
+srv/PickPlaceTask.srv
+srv/PickPlaceTask_Request.msg
+srv/PickPlaceTask_Response.msg
+srv/ValidateObject.idl
+srv/ValidateObject.srv
+srv/ValidateObject_Request.msg
+srv/ValidateObject_Response.msg

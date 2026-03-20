@@ -1,0 +1,4 @@
+source;share/phy_interface/local_setup.bash
+source;share/phy_interface/local_setup.dsv
+source;share/phy_interface/local_setup.sh
+source;share/phy_interface/local_setup.zsh

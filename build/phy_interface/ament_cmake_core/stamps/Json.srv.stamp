@@ -1,0 +1,5 @@
+# Request
+string payload
+---
+# Response
+bool success

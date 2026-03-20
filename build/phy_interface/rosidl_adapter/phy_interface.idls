@@ -1,0 +1,3 @@
+/home/robot/jm_ws/build/phy_interface/rosidl_adapter/phy_interface:srv/Json.idl
+/home/robot/jm_ws/build/phy_interface/rosidl_adapter/phy_interface:srv/GetPose.idl
+/home/robot/jm_ws/build/phy_interface/rosidl_adapter/phy_interface:action/Move.idl

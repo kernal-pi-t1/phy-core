@@ -1,0 +1,43 @@
+running egg_info
+creating ../../build/pick_place_orchestration/pick_place_orchestration.egg-info
+writing ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/PKG-INFO
+writing dependency_links to ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/dependency_links.txt
+writing entry points to ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/entry_points.txt
+writing requirements to ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/requires.txt
+writing top-level names to ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/top_level.txt
+writing manifest file '../../build/pick_place_orchestration/pick_place_orchestration.egg-info/SOURCES.txt'
+reading manifest file '../../build/pick_place_orchestration/pick_place_orchestration.egg-info/SOURCES.txt'
+writing manifest file '../../build/pick_place_orchestration/pick_place_orchestration.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/robot/jm_ws/build/pick_place_orchestration/build
+creating /home/robot/jm_ws/build/pick_place_orchestration/build/lib
+creating /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration
+copying pick_place_orchestration/orchestration_node.py -> /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration
+copying pick_place_orchestration/sam3_node.py -> /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration
+copying pick_place_orchestration/__init__.py -> /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration
+running install
+running install_lib
+creating /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration
+copying /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration/orchestration_node.py -> /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration
+copying /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration/sam3_node.py -> /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration
+copying /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration/__init__.py -> /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration
+byte-compiling /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration/orchestration_node.py to orchestration_node.cpython-310.pyc
+byte-compiling /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration/sam3_node.py to sam3_node.cpython-310.pyc
+byte-compiling /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration/__init__.py to __init__.cpython-310.pyc
+running install_data
+creating /home/robot/jm_ws/install/pick_place_orchestration/share/ament_index
+creating /home/robot/jm_ws/install/pick_place_orchestration/share/ament_index/resource_index
+creating /home/robot/jm_ws/install/pick_place_orchestration/share/ament_index/resource_index/packages
+copying resource/pick_place_orchestration -> /home/robot/jm_ws/install/pick_place_orchestration/share/ament_index/resource_index/packages
+copying package.xml -> /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration
+creating /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration/launch
+copying launch/orchestration.launch.py -> /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration/launch
+creating /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration/config
+copying config/waypoints.yaml -> /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration/config
+running install_egg_info
+Copying ../../build/pick_place_orchestration/pick_place_orchestration.egg-info to /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration-0.1.0-py3.10.egg-info
+running install_scripts
+Installing orchestration_node script to /home/robot/jm_ws/install/pick_place_orchestration/lib/pick_place_orchestration
+Installing sam3_node script to /home/robot/jm_ws/install/pick_place_orchestration/lib/pick_place_orchestration
+writing list of installed files to '/home/robot/jm_ws/build/pick_place_orchestration/install.log'

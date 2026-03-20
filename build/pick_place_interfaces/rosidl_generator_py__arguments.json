@@ -1,0 +1,30 @@
+{
+  "package_name": "pick_place_interfaces",
+  "output_dir": "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_generator_py/pick_place_interfaces",
+  "template_dir": "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource",
+  "idl_tuples": [
+    "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces:msg/ObjectPose.idl",
+    "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces:srv/PickPlaceTask.idl",
+    "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces:srv/GetPickPose.idl",
+    "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces:srv/ValidateObject.idl"
+  ],
+  "target_dependencies": [
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../../../lib/rosidl_generator_py/rosidl_generator_py",
+    "/opt/ros/humble/local/lib/python3.10/dist-packages/rosidl_generator_py/__init__.py",
+    "/opt/ros/humble/local/lib/python3.10/dist-packages/rosidl_generator_py/generate_py_impl.py",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_action_pkg_typesupport_entry_point.c.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_action.py.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_idl_pkg_typesupport_entry_point.c.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_idl_support.c.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_idl.py.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_msg_pkg_typesupport_entry_point.c.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_msg_support.c.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_msg.py.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_srv_pkg_typesupport_entry_point.c.em",
+    "/opt/ros/humble/share/rosidl_generator_py/cmake/../resource/_srv.py.em",
+    "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces/msg/ObjectPose.idl",
+    "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces/srv/PickPlaceTask.idl",
+    "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces/srv/GetPickPose.idl",
+    "/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces/srv/ValidateObject.idl"
+  ]
+}

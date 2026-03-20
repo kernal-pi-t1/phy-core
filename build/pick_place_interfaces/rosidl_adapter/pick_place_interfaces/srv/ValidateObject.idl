@@ -1,0 +1,19 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from pick_place_interfaces/srv/ValidateObject.srv
+// generated code does not contain a copyright notice
+
+
+module pick_place_interfaces {
+  module srv {
+    @verbatim (language="comment", text=
+      "Request")
+    struct ValidateObject_Request {
+      string object_name;
+    };
+    @verbatim (language="comment", text=
+      "Response")
+    struct ValidateObject_Response {
+      boolean is_valid;
+    };
+  };
+};

@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "pick_place_interfaces__py",
+		"source" : "/home/robot/jm_ws/build/pick_place_interfaces/pick_place_interfaces__py"
+	}
+}

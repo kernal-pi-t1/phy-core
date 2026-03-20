@@ -1,0 +1,4 @@
+[console_scripts]
+orchestration_node = pick_place_orchestration.orchestration_node:main
+sam3_node = pick_place_orchestration.sam3_node:main
+

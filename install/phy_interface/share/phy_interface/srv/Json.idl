@@ -1,0 +1,19 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from phy_interface/srv/Json.srv
+// generated code does not contain a copyright notice
+
+
+module phy_interface {
+  module srv {
+    @verbatim (language="comment", text=
+      "Request")
+    struct Json_Request {
+      string payload;
+    };
+    @verbatim (language="comment", text=
+      "Response")
+    struct Json_Response {
+      boolean success;
+    };
+  };
+};

@@ -1,0 +1,8 @@
+# Goal
+float64[6] target_pose  # x, y, z, roll, pitch, yaw
+---
+# Result
+bool success
+---
+# Feedback
+string status

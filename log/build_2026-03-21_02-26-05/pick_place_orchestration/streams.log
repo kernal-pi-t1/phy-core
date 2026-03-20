@@ -1,0 +1,45 @@
+[0.285s] Invoking command in '/home/robot/jm_ws/src/pick_place_orchestration': AMENT_PREFIX_PATH=/home/robot/jm_ws/install/pick_place_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/robot/jm_ws/install/pick_place_interfaces:${CMAKE_PREFIX_PATH} LD_LIBRARY_PATH=/home/robot/jm_ws/install/pick_place_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/robot/jm_ws/build/pick_place_orchestration/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages:/home/robot/jm_ws/install/pick_place_interfaces/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/pick_place_orchestration build --build-base /home/robot/jm_ws/build/pick_place_orchestration/build install --record /home/robot/jm_ws/build/pick_place_orchestration/install.log --single-version-externally-managed install_data
+[0.387s] running egg_info
+[0.387s] creating ../../build/pick_place_orchestration/pick_place_orchestration.egg-info
+[0.388s] writing ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/PKG-INFO
+[0.388s] writing dependency_links to ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/dependency_links.txt
+[0.388s] writing entry points to ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/entry_points.txt
+[0.388s] writing requirements to ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/requires.txt
+[0.388s] writing top-level names to ../../build/pick_place_orchestration/pick_place_orchestration.egg-info/top_level.txt
+[0.388s] writing manifest file '../../build/pick_place_orchestration/pick_place_orchestration.egg-info/SOURCES.txt'
+[0.389s] reading manifest file '../../build/pick_place_orchestration/pick_place_orchestration.egg-info/SOURCES.txt'
+[0.389s] writing manifest file '../../build/pick_place_orchestration/pick_place_orchestration.egg-info/SOURCES.txt'
+[0.389s] running build
+[0.389s] running build_py
+[0.389s] creating /home/robot/jm_ws/build/pick_place_orchestration/build
+[0.389s] creating /home/robot/jm_ws/build/pick_place_orchestration/build/lib
+[0.389s] creating /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration
+[0.389s] copying pick_place_orchestration/orchestration_node.py -> /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration
+[0.389s] copying pick_place_orchestration/sam3_node.py -> /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration
+[0.389s] copying pick_place_orchestration/__init__.py -> /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration
+[0.389s] running install
+[0.389s] running install_lib
+[0.390s] creating /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration
+[0.390s] copying /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration/orchestration_node.py -> /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration
+[0.390s] copying /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration/sam3_node.py -> /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration
+[0.390s] copying /home/robot/jm_ws/build/pick_place_orchestration/build/lib/pick_place_orchestration/__init__.py -> /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration
+[0.390s] byte-compiling /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration/orchestration_node.py to orchestration_node.cpython-310.pyc
+[0.391s] byte-compiling /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration/sam3_node.py to sam3_node.cpython-310.pyc
+[0.392s] byte-compiling /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration/__init__.py to __init__.cpython-310.pyc
+[0.392s] running install_data
+[0.392s] creating /home/robot/jm_ws/install/pick_place_orchestration/share/ament_index
+[0.392s] creating /home/robot/jm_ws/install/pick_place_orchestration/share/ament_index/resource_index
+[0.392s] creating /home/robot/jm_ws/install/pick_place_orchestration/share/ament_index/resource_index/packages
+[0.392s] copying resource/pick_place_orchestration -> /home/robot/jm_ws/install/pick_place_orchestration/share/ament_index/resource_index/packages
+[0.392s] copying package.xml -> /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration
+[0.392s] creating /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration/launch
+[0.392s] copying launch/orchestration.launch.py -> /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration/launch
+[0.392s] creating /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration/config
+[0.392s] copying config/waypoints.yaml -> /home/robot/jm_ws/install/pick_place_orchestration/share/pick_place_orchestration/config
+[0.392s] running install_egg_info
+[0.393s] Copying ../../build/pick_place_orchestration/pick_place_orchestration.egg-info to /home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages/pick_place_orchestration-0.1.0-py3.10.egg-info
+[0.393s] running install_scripts
+[0.402s] Installing orchestration_node script to /home/robot/jm_ws/install/pick_place_orchestration/lib/pick_place_orchestration
+[0.402s] Installing sam3_node script to /home/robot/jm_ws/install/pick_place_orchestration/lib/pick_place_orchestration
+[0.402s] writing list of installed files to '/home/robot/jm_ws/build/pick_place_orchestration/install.log'
+[0.413s] Invoked command in '/home/robot/jm_ws/src/pick_place_orchestration' returned '0': AMENT_PREFIX_PATH=/home/robot/jm_ws/install/pick_place_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/robot/jm_ws/install/pick_place_interfaces:${CMAKE_PREFIX_PATH} LD_LIBRARY_PATH=/home/robot/jm_ws/install/pick_place_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/robot/jm_ws/build/pick_place_orchestration/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/robot/jm_ws/install/pick_place_orchestration/lib/python3.10/site-packages:/home/robot/jm_ws/install/pick_place_interfaces/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/pick_place_orchestration build --build-base /home/robot/jm_ws/build/pick_place_orchestration/build install --record /home/robot/jm_ws/build/pick_place_orchestration/install.log --single-version-externally-managed install_data
