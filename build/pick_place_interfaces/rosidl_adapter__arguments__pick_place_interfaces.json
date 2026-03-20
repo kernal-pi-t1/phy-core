@@ -1,9 +1,0 @@
-{
-  "package_name": "pick_place_interfaces",
-  "non_idl_tuples": [
-    "/home/robot/jm_ws/src/pick_place_interfaces:msg/ObjectPose.msg",
-    "/home/robot/jm_ws/src/pick_place_interfaces:srv/PickPlaceTask.srv",
-    "/home/robot/jm_ws/src/pick_place_interfaces:srv/GetPickPose.srv",
-    "/home/robot/jm_ws/src/pick_place_interfaces:srv/ValidateObject.srv"
-  ]
-}

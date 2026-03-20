@@ -1,4 +1,0 @@
-[console_scripts]
-orchestration_node = phy_core.orchestration_node:main
-sam3_node = phy_core.sam3_node:main
-

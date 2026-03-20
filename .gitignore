@@ -33,3 +33,5 @@ colcon.meta
 .env
 *.bag
 .autocode/
+.omc/
+sam3_test/output/

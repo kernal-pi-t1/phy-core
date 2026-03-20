@@ -1,4 +1,0 @@
-/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces:msg/ObjectPose.idl
-/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces:srv/PickPlaceTask.idl
-/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces:srv/GetPickPose.idl
-/home/robot/jm_ws/build/pick_place_interfaces/rosidl_adapter/pick_place_interfaces:srv/ValidateObject.idl

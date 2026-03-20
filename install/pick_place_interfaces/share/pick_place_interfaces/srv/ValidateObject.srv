@@ -1,5 +1,0 @@
-# Request
-string object_name
----
-# Response
-bool is_valid

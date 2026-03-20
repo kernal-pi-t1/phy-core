@@ -1,7 +1,0 @@
-# Request
-string object_name
-string return_reason
----
-# Response
-bool success
-string error_message
