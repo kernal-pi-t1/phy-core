@@ -3,7 +3,7 @@
 This file is the TARGET for autocode experiments.
 Modify the inference strategy here to improve speed while maintaining quality.
 
-Current strategy: baseline (no optimization)
+Current strategy: exp1 — fp16 model + autocast + cudnn.benchmark
 """
 
 import sys
@@ -37,6 +37,9 @@ def load_model(device):
     if not os.path.exists(pt_path):
         convert_safetensors_to_pt(SAFETENSORS_PATH, pt_path)
 
+    # Enable cudnn benchmark for faster convolutions
+    torch.backends.cudnn.benchmark = True
+
     from sam3 import build_sam3_image_model
     from sam3.model.sam3_image_processor import Sam3Processor
     model = build_sam3_image_model(
@@ -67,18 +70,10 @@ def preprocess_image(image_path):
 
 
 def run_inference(processor, pil_image, prompt="object"):
-    """Run SAM3 inference on a single image.
-
-    Optimization ideas:
-    - Use torch.compile on model components
-    - Use half precision (fp16)
-    - Optimize processor resolution
-    - Cache backbone features across similar frames
-    - Use torch.cuda.amp autocast
-    - Batch processing strategies
-    """
-    state = processor.set_image(pil_image)
-    state = processor.set_text_prompt(prompt=prompt, state=state)
+    """Run SAM3 inference on a single image."""
+    with torch.cuda.amp.autocast(dtype=torch.float16):
+        state = processor.set_image(pil_image)
+        state = processor.set_text_prompt(prompt=prompt, state=state)
     return state
 
 
