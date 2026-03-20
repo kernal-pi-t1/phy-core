@@ -1,0 +1,35 @@
+# Build artifacts
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+dist/
+.eggs/
+
+# Output data
+output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ROS2 colcon
+colcon.meta
+
+# Environment
+.env
+*.bag
+.autocode/
