@@ -20,6 +20,11 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 _SAM3_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "sam3")
+_SAFETENSORS_PATH = os.path.expanduser(
+    "~/.cache/huggingface/hub/models--yolain--sam3-safetensors/snapshots/"
+    "eb174af94625028887dfe92d2d8483ca5a5d3336/sam3.safetensors"
+)
+_PT_CACHE_PATH = "/tmp/sam3_converted.pt"
 
 
 class Sam3FastProcessor:
@@ -40,8 +45,17 @@ class Sam3FastProcessor:
 
         torch.backends.cudnn.benchmark = True
 
+        # Use local checkpoint (avoid HuggingFace network dependency)
+        checkpoint_path = _PT_CACHE_PATH
+        if not os.path.exists(checkpoint_path):
+            logger.info("Converting safetensors → pt cache...")
+            from safetensors.torch import load_file
+            state_dict = load_file(_SAFETENSORS_PATH)
+            torch.save({"model": state_dict}, checkpoint_path)
+
         model = build_sam3_image_model(
             device=device, eval_mode=True, compile=True,
+            load_from_HF=False, checkpoint_path=checkpoint_path,
         )
         self._processor = Sam3Processor(
             model, device=device, confidence_threshold=confidence_threshold,
