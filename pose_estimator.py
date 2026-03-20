@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 import numpy as np
+import torch
 import yaml
 from PIL import Image
 from scipy.spatial.transform import Rotation as R
@@ -208,11 +209,17 @@ class PoseEstimator:
         from sam3 import build_sam3_image_model
         from sam3.model.sam3_image_processor import Sam3Processor
 
-        model = build_sam3_image_model(device=device, eval_mode=True)
+        # Performance: enable cudnn benchmark + torch.compile
+        torch.backends.cudnn.benchmark = True
+
+        model = build_sam3_image_model(
+            device=device, eval_mode=True, compile=True,
+        )
         self._processor = Sam3Processor(
             model, device=device, confidence_threshold=confidence_threshold
         )
         self._device = device
+        self._cached_text = {}  # prompt → text features cache
 
         # Load fixed crop region (set via select_crop_region.py)
         self._crop = load_crop_config(crop_config_path)
@@ -257,8 +264,19 @@ class PoseEstimator:
         rgb = rgb_or_bgr[..., ::-1].copy() if is_bgr else rgb_or_bgr
         pil_image = Image.fromarray(rgb)
 
-        state = self._processor.set_image(pil_image)
-        state = self._processor.set_text_prompt(prompt=prompt, state=state)
+        with torch.amp.autocast('cuda', dtype=torch.float16):
+            state = self._processor.set_image(pil_image)
+            # Cache text features per prompt to avoid recomputation
+            if prompt not in self._cached_text:
+                self._cached_text[prompt] = (
+                    self._processor.model.backbone.forward_text(
+                        [prompt], device=self._device
+                    )
+                )
+            state["backbone_out"].update(self._cached_text[prompt])
+            if "geometric_prompt" not in state:
+                state["geometric_prompt"] = self._processor.model._get_dummy_prompt()
+            state = self._processor._forward_grounding(state)
 
         masks = state["masks"]  # (N, 1, H, W) from sam3_image_processor.py:219
 
