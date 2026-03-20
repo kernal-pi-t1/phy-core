@@ -14,7 +14,7 @@ class TestOrchestrationNodeConstants(unittest.TestCase):
     """Test constants and class attributes without spinning up ROS."""
 
     def test_state_constants_defined(self):
-        from phy_core.orchestration_node import OrchestrationNode
+        from phy_core.node.phy_core_node import OrchestrationNode
 
         assert OrchestrationNode.STATE_IDLE == 'IDLE'
         assert OrchestrationNode.STATE_INIT_POSE == 'INIT_POSE'
@@ -26,7 +26,7 @@ class TestOrchestrationNodeConstants(unittest.TestCase):
         assert OrchestrationNode.STATE_PLACE_RETURN == 'PLACE_RETURN'
 
     def test_zero_pose(self):
-        from phy_core.orchestration_node import _ZERO_POSE
+        from phy_core.node.phy_core_node import _ZERO_POSE
 
         assert _ZERO_POSE == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         assert len(_ZERO_POSE) == 6
@@ -59,7 +59,7 @@ class TestOrchestrationNodeInit(unittest.TestCase):
             mock_client.wait_for_service.return_value = True
             mock_create_client.return_value = mock_client
 
-            from phy_core.orchestration_node import OrchestrationNode
+            from phy_core.node.phy_core_node import OrchestrationNode
 
             self.node = OrchestrationNode()
 
@@ -82,7 +82,7 @@ class TestOrchestrationNodeInit(unittest.TestCase):
         assert 'place_return_pose' in param_names
 
     def test_default_poses_are_zero(self):
-        from phy_core.orchestration_node import _ZERO_POSE
+        from phy_core.node.phy_core_node import _ZERO_POSE
 
         assert self.node.init_pose == _ZERO_POSE
         assert self.node.val_pose == _ZERO_POSE
@@ -119,7 +119,7 @@ class TestOrchestrationNodeCallGetPose(unittest.TestCase):
             mock_client.wait_for_service.return_value = True
             mock_create_client.return_value = mock_client
 
-            from phy_core.orchestration_node import OrchestrationNode
+            from phy_core.node.phy_core_node import OrchestrationNode
 
             self.node = OrchestrationNode()
 
@@ -177,7 +177,7 @@ class TestOrchestrationNodeSendMove(unittest.TestCase):
             mock_client.wait_for_service.return_value = True
             mock_create_client.return_value = mock_client
 
-            from phy_core.orchestration_node import OrchestrationNode
+            from phy_core.node.phy_core_node import OrchestrationNode
 
             self.node = OrchestrationNode()
 
@@ -248,7 +248,7 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
             mock_client.wait_for_service.return_value = True
             mock_create_client.return_value = mock_client
 
-            from phy_core.orchestration_node import OrchestrationNode
+            from phy_core.node.phy_core_node import OrchestrationNode
 
             self.node = OrchestrationNode()
 

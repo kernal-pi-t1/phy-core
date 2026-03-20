@@ -44,11 +44,11 @@ def generate_launch_description():
             parameters=[config_file],
         ),
 
-        # Orchestration state machine node
+        # Core orchestration node
         Node(
             package='phy_core',
-            executable='orchestration_node',
-            name='orchestration_node',
+            executable='phy_core_node',
+            name='phy_core_node',
             output='screen',
             parameters=[config_file],
         ),

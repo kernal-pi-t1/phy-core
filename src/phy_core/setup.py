@@ -26,8 +26,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'orchestration_node = phy_core.orchestration_node:main',
-            'sam3_node = phy_core.sam3_node:main',
+            'phy_core_node = phy_core.node.phy_core_node:main',
+            'sam3_node = phy_core.node.sam3_node:main',
         ],
     },
 )

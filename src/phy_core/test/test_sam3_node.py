@@ -30,12 +30,12 @@ class TestSam3NodeInit(unittest.TestCase):
             default_params.update(params)
 
         with patch(
-            'phy_core.sam3_node.PoseEstimator', create=True
+            'phy_core.node.sam3_node.PoseEstimator', create=True
         ) as MockEstimator, patch(
-            'phy_core.sam3_node.capture_single_frame', create=True
+            'phy_core.node.sam3_node.capture_single_frame', create=True
         ) as mock_capture:
             # Patch imports inside Sam3Node.__init__
-            import phy_core.sam3_node as mod
+            import phy_core.node.sam3_node as mod
 
             original_init = mod.Sam3Node.__init__
 
@@ -110,7 +110,7 @@ class TestSam3NodeCallback(unittest.TestCase):
         """Create a Sam3Node with mocked dependencies."""
         import threading
         from rclpy.node import Node
-        import phy_core.sam3_node as mod
+        import phy_core.node.sam3_node as mod
 
         def patched_init(self_node):
             Node.__init__(self_node, 'sam3_node')
