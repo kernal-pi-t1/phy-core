@@ -3,7 +3,7 @@
 This file is the TARGET for autocode experiments.
 Modify the inference strategy here to improve speed while maintaining quality.
 
-Current strategy: exp3 — autocast fp16 + cudnn.benchmark + cached text features
+Current strategy: exp4 — autocast fp16 + cudnn.benchmark + cached text + torch.compile
 """
 
 import sys
@@ -45,6 +45,7 @@ def load_model(device):
     model = build_sam3_image_model(
         bpe_path=bpe_path, device=device, eval_mode=True,
         load_from_HF=False, checkpoint_path=pt_path,
+        compile=True,
     )
     processor = Sam3Processor(model, device=device, confidence_threshold=0.01)
     return processor
