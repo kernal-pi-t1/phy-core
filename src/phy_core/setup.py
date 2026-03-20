@@ -28,6 +28,7 @@ setup(
         'console_scripts': [
             'phy_core_node = phy_core.node.phy_core_node:main',
             'sam3_node = phy_core.node.sam3_node:main',
+            'vlm_node = phy_core.node.vlm_node:main',
         ],
     },
 )

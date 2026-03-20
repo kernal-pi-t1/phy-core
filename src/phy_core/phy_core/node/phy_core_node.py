@@ -23,7 +23,7 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallb
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.action import ActionClient
 
-from phy_interface.srv import Json, GetPose
+from phy_interface.srv import Json, GetPose, VlmJudge
 from phy_interface.action import Move
 
 _ZERO_POSE = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -73,6 +73,12 @@ class OrchestrationNode(Node):
             callback_group=self._client_cb_group
         )
 
+        # --- Service client (vlm_node) ---
+        self._vlm_client = self.create_client(
+            VlmJudge, 'vlm_judge',
+            callback_group=self._client_cb_group
+        )
+
         # --- Action client (robot_node) ---
         self._robot_client = ActionClient(
             self, Move, 'move',
@@ -83,6 +89,10 @@ class OrchestrationNode(Node):
         self.get_logger().info('Waiting for sam3_node get_pose service...')
         if not self._get_pose_client.wait_for_service(timeout_sec=120.0):
             raise RuntimeError('sam3_node get_pose service not available')
+
+        self.get_logger().info('Waiting for vlm_node vlm_judge service...')
+        if not self._vlm_client.wait_for_service(timeout_sec=120.0):
+            raise RuntimeError('vlm_node vlm_judge service not available')
 
         self.get_logger().info('Waiting for robot move action server...')
         if not self._robot_client.wait_for_server(timeout_sec=120.0):
@@ -152,6 +162,24 @@ class OrchestrationNode(Node):
         if pose == _ZERO_POSE:
             return None
         return pose
+
+    def _call_vlm_judge(self, image_paths, object_name, return_reason):
+        """Call vlm_node vlm_judge service. Returns (decision, reason) or None on failure."""
+        req = VlmJudge.Request()
+        req.image_paths = image_paths
+        req.object_name = object_name
+        req.return_reason = return_reason
+        future = self._vlm_client.call_async(req)
+        rclpy.spin_until_future_complete(self, future)
+        result = future.result()
+        if not result.success:
+            self.get_logger().error(f'VLM judge failed: {result.reason}')
+            return None
+        self.get_logger().info(
+            f'VLM result: {result.decision} '
+            f'(damage={result.damage_status}, {result.inference_time:.2f}s)'
+        )
+        return result
 
     # ------------------------------------------------------------------
     # Main state machine

@@ -1,0 +1,7 @@
+[submodule "sam3"]
+	path = sam3
+	url = https://github.com/facebookresearch/sam3.git
+
+[submodule "src/phy_interface"]
+	path = src/phy_interface
+	url = https://github.com/kernal-pi-t1/phy-interface.git
