@@ -1,8 +1,10 @@
 """Unit tests for OrchestrationNode."""
 
+import math
 import unittest
 from unittest.mock import MagicMock, patch, PropertyMock
 
+import numpy as np
 import rclpy
 from rclpy.node import Node
 
@@ -352,3 +354,149 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
         # Retry 2: init+pre_grasp+descend+lift+val+place+return = 7
         # Total = 13
         assert self.node._send_move.call_count == 13
+
+
+class TestDetectAndTransform(unittest.TestCase):
+    """Test object detection → camera-to-base coordinate transform pipeline."""
+
+    @classmethod
+    def setUpClass(cls):
+        rclpy.init()
+
+    @classmethod
+    def tearDownClass(cls):
+        rclpy.shutdown()
+
+    def setUp(self):
+        with patch.object(
+            rclpy.node.Node, 'create_client'
+        ) as mock_create_client, patch(
+            'rclpy.action.ActionClient.__init__', return_value=None
+        ), patch(
+            'rclpy.action.ActionClient.wait_for_server', return_value=True
+        ):
+            mock_client = MagicMock()
+            mock_client.wait_for_service.return_value = True
+            mock_create_client.return_value = mock_client
+
+            from phy_core.node.phy_core_node import OrchestrationNode
+            self.node = OrchestrationNode()
+
+    def tearDown(self):
+        self.node.destroy_node()
+
+    # ------------------------------------------------------------------
+    # _transform_pose unit tests
+    # ------------------------------------------------------------------
+    def test_transform_identity_rotation(self):
+        """camera_rpy=0 → base = cam_pos + offset, orientation unchanged."""
+        self.node.camera_offset = [0.80, 0.0, 0.66]
+        self.node.camera_rpy_rad = [0.0, 0.0, 0.0]
+
+        cam_pose = [0.1, 0.05, 0.5, 0.0, 0.0, 0.0]
+        result = self.node._transform_pose(cam_pose)
+
+        # position = cam + offset
+        np.testing.assert_allclose(result[0], 0.1 + 0.80, atol=1e-6)
+        np.testing.assert_allclose(result[1], 0.05 + 0.0, atol=1e-6)
+        np.testing.assert_allclose(result[2], 0.5 + 0.66, atol=1e-6)
+        # orientation unchanged
+        np.testing.assert_allclose(result[3:], [0.0, 0.0, 0.0], atol=1e-6)
+
+    def test_transform_with_camera_yaw_90(self):
+        """camera yaw=90° rotates X→Y, Y→-X in base frame."""
+        self.node.camera_offset = [0.80, 0.0, 0.66]
+        self.node.camera_rpy_rad = [0.0, 0.0, math.radians(90.0)]
+
+        cam_pose = [0.1, 0.0, 0.5, 0.0, 0.0, 0.0]
+        result = self.node._transform_pose(cam_pose)
+
+        # R_yaw90 @ [0.1, 0, 0.5] = [0, 0.1, 0.5] + offset
+        np.testing.assert_allclose(result[0], 0.0 + 0.80, atol=1e-6)
+        np.testing.assert_allclose(result[1], 0.1 + 0.0, atol=1e-6)
+        np.testing.assert_allclose(result[2], 0.5 + 0.66, atol=1e-6)
+
+    def test_transform_preserves_6dof(self):
+        """Result always has 6 float elements."""
+        self.node.camera_offset = [0.80, 0.0, 0.66]
+        self.node.camera_rpy_rad = [0.0, 0.0, 0.0]
+
+        cam_pose = [0.3, -0.1, 0.4, 0.1, -0.2, 0.3]
+        result = self.node._transform_pose(cam_pose)
+
+        assert len(result) == 6
+        assert all(isinstance(v, float) for v in result)
+
+    def test_transform_negative_camera_coords(self):
+        """Negative camera coordinates transform correctly."""
+        self.node.camera_offset = [0.80, 0.0, 0.66]
+        self.node.camera_rpy_rad = [0.0, 0.0, 0.0]
+
+        cam_pose = [-0.1, -0.2, 0.3, 0.0, 0.0, 0.0]
+        result = self.node._transform_pose(cam_pose)
+
+        np.testing.assert_allclose(result[0], -0.1 + 0.80, atol=1e-6)
+        np.testing.assert_allclose(result[1], -0.2 + 0.0, atol=1e-6)
+        np.testing.assert_allclose(result[2], 0.3 + 0.66, atol=1e-6)
+
+    # ------------------------------------------------------------------
+    # detect → transform end-to-end
+    # ------------------------------------------------------------------
+    @patch('rclpy.spin_until_future_complete')
+    def test_detect_then_transform_pipeline(self, mock_spin):
+        """Full pipeline: get_pose returns camera pose → _transform_pose → base coords."""
+        self.node.camera_offset = [0.80, 0.0, 0.66]
+        self.node.camera_rpy_rad = [0.0, 0.0, 0.0]
+
+        cam_pose = [0.15, -0.05, 0.40, 0.0, 0.0, 0.0]
+
+        mock_result = MagicMock()
+        mock_result.pose = cam_pose
+        mock_future = MagicMock()
+        mock_future.result.return_value = mock_result
+        self.node._get_pose_client.call_async = MagicMock(return_value=mock_future)
+
+        # Step 1: detect
+        detected = self.node._call_get_pose('test_object')
+        assert detected == cam_pose
+
+        # Step 2: transform
+        base_pose = self.node._transform_pose(detected)
+
+        np.testing.assert_allclose(base_pose[0], 0.15 + 0.80, atol=1e-6)
+        np.testing.assert_allclose(base_pose[1], -0.05 + 0.0, atol=1e-6)
+        np.testing.assert_allclose(base_pose[2], 0.40 + 0.66, atol=1e-6)
+
+    @patch('rclpy.spin_until_future_complete')
+    def test_detect_failure_returns_none(self, mock_spin):
+        """When object not detected (zero pose), pipeline stops early."""
+        mock_result = MagicMock()
+        mock_result.pose = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        mock_future = MagicMock()
+        mock_future.result.return_value = mock_result
+        self.node._get_pose_client.call_async = MagicMock(return_value=mock_future)
+
+        detected = self.node._call_get_pose('nonexistent_object')
+        assert detected is None
+
+    @patch('rclpy.spin_until_future_complete')
+    def test_detect_transform_with_rotated_camera(self, mock_spin):
+        """Detect + transform with non-zero camera RPY."""
+        self.node.camera_offset = [0.80, 0.0, 0.66]
+        self.node.camera_rpy_rad = [0.0, 0.0, math.radians(90.0)]
+
+        cam_pose = [0.2, 0.0, 0.5, 0.0, 0.0, 0.0]
+
+        mock_result = MagicMock()
+        mock_result.pose = cam_pose
+        mock_future = MagicMock()
+        mock_future.result.return_value = mock_result
+        self.node._get_pose_client.call_async = MagicMock(return_value=mock_future)
+
+        detected = self.node._call_get_pose('cup')
+        base_pose = self.node._transform_pose(detected)
+
+        # yaw 90°: X_cam→Y_base, Y_cam→-X_base
+        np.testing.assert_allclose(base_pose[0], 0.0 + 0.80, atol=1e-6)
+        np.testing.assert_allclose(base_pose[1], 0.2 + 0.0, atol=1e-6)
+        np.testing.assert_allclose(base_pose[2], 0.5 + 0.66, atol=1e-6)

@@ -13,16 +13,17 @@ orchestration_node:
     camera_offset: [0.80, 0.0, 0.66]
     camera_rpy: [180.0, 0.0, 0.0]  # downward-looking: 180° roll (cam_Z → -base_Z)
 
-    # Fixed waypoints (replace with actual robot poses)
-    init_pose: [0.3, 0.0, 0.4, 0.0, 0.0, 0.0]
-    val_pose: [0.3, 0.0, 0.5, 0.0, 90.0, 0.0]
-    place_pose: [0.3, 0.3, 0.2, 0.0, 0.0, 0.0]
-    place_return_pose: [0.3, -0.3, 0.2, 0.0, 0.0, 0.0]
+    # Fixed waypoints — joint angles [j1, j2, j3, j4, j5, j6] in degrees (MoveJoint/FK)
+    # get_pose로 받아오는 pick 좌표만 IK(MoveLine), 나머지는 전부 FK(MoveJoint)
+    init_pose: [0.0, 0.0, 90.0, 0.0, 90.0, 0.0]
+    val_pose: [0.0, -10.0, 90.0, 0.0, 90.0, 0.0]
+    place_pose: [90.0, 0.0, 90.0, 0.0, 90.0, 0.0]
+    place_return_pose: [-90.0, 0.0, 90.0, 0.0, 90.0, 0.0]
 
 sam3_node:
   ros__parameters:
     device: "cuda"
-    confidence_threshold: 0.5
+    confidence_threshold: 0.0054  # best from sweep: score=108.68 (10/10 detect, 0 FP, max_std=1.32mm)
     frame_skip: 1  # 1=no skip, 5=backbone every 5th frame (~60ms effective)
     # Camera intrinsics (RealSense D435 typical values — REPLACE with actual)
     fx: 260.0

@@ -29,7 +29,7 @@ try:
     FLANGE_SERIAL_DEPS = True
 except ImportError:
     FLANGE_SERIAL_DEPS = False
-from phy_interface.srv import Json, GetPose, VlmJudge
+from phy_interface.srv import Json, GetPose, CountObjects, VlmJudge
 from phy_interface.action import Move
 
 _ZERO_POSE = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -83,9 +83,13 @@ class OrchestrationNode(Node):
             callback_group=self._task_cb_group
         )
 
-        # --- Service client (sam3_node) ---
+        # --- Service clients (sam3_node) ---
         self._get_pose_client = self.create_client(
             GetPose, 'get_pose',
+            callback_group=self._client_cb_group
+        )
+        self._count_objects_client = self.create_client(
+            CountObjects, 'count_objects',
             callback_group=self._client_cb_group
         )
 
@@ -143,6 +147,10 @@ class OrchestrationNode(Node):
         self.get_logger().info('Waiting for sam3_node get_pose service...')
         if not self._get_pose_client.wait_for_service(timeout_sec=120.0):
             raise RuntimeError('sam3_node get_pose service not available')
+
+        self.get_logger().info('Waiting for sam3_node count_objects service...')
+        if not self._count_objects_client.wait_for_service(timeout_sec=120.0):
+            raise RuntimeError('sam3_node count_objects service not available')
 
         self.get_logger().info('Waiting for vlm_node vlm_judge service...')
         if not self._vlm_client.wait_for_service(timeout_sec=120.0):
@@ -218,9 +226,9 @@ class OrchestrationNode(Node):
     # ------------------------------------------------------------------
     # Robot Action & Gripper Helper
     # ------------------------------------------------------------------
-    def _send_move(self, pose, label='', grip=False):
+    def _send_move(self, pose, label='', grip=False, method='ik'):
         self.get_logger().info(
-            f'[{label}] Move goal: '
+            f'[{label}] Move goal ({method}): '
             f'x={pose[0]:.4f} y={pose[1]:.4f} z={pose[2]:.4f} '
             f'r={pose[3]:.2f} p={pose[4]:.2f} y={pose[5]:.2f}'
             f'{" (grip=TOGGLE)" if grip else ""}'
@@ -228,6 +236,7 @@ class OrchestrationNode(Node):
         goal = Move.Goal()
         goal.target_pose = pose
         goal.grip = grip
+        goal.method = method
 
         try:
             future = self._robot_client.send_goal_async(goal)
@@ -349,6 +358,7 @@ class OrchestrationNode(Node):
     # Perception helper
     # ------------------------------------------------------------------
     def _call_get_pose(self, object_name):
+        """Call SAM3 get_pose service. Returns (pose, detected_count) or (None, 0)."""
         req = GetPose.Request()
         req.method = object_name
         try:
@@ -356,12 +366,25 @@ class OrchestrationNode(Node):
             rclpy.spin_until_future_complete(self, future)
             result = future.result()
             pose = list(result.pose)
+            count = result.detected_count
             if pose == _ZERO_POSE:
-                return None
-            return pose
+                return None, count
+            return pose, count
         except Exception as e:
             self.get_logger().error(f'get_pose service call failed: {e}')
-            return None
+            return None, 0
+
+    def _call_count_objects(self, object_name):
+        """Call SAM3 count_objects service. Returns detected count."""
+        req = CountObjects.Request()
+        req.method = object_name
+        try:
+            future = self._count_objects_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
+            return future.result().detected_count
+        except Exception as e:
+            self.get_logger().error(f'count_objects service call failed: {e}')
+            return 0
 
     def _call_vlm_judge(self, image_paths, object_name, return_reason):
         req = VlmJudge.Request()
@@ -398,7 +421,7 @@ class OrchestrationNode(Node):
                 # 1. State: Init Pose
                 self._state = self.STATE_INIT_POSE
                 self.get_logger().info(f'[State: INIT_POSE] (retry={retry_count})')
-                if not self._send_move(self.init_pose, 'INIT_POSE'):
+                if not self._send_move(self.init_pose, 'INIT_POSE', method='fk'):
                     response.success = False
                     self._state = self.STATE_IDLE
                     return response
@@ -407,7 +430,7 @@ class OrchestrationNode(Node):
                 # 2. State: Get Pick Pose (Vision - SAM3)
                 self._state = self.STATE_GET_PICK_POSE
                 self.get_logger().info(f'[State: GET_PICK_POSE] Vision for "{object_name}"')
-                cam_pick_pose = self._call_get_pose(object_name)
+                cam_pick_pose, _ = self._call_get_pose(object_name)
                 if cam_pick_pose is None:
                     self.get_logger().error(f'Vision failed to detect "{object_name}"')
                     response.success = False
@@ -458,22 +481,47 @@ class OrchestrationNode(Node):
                     self._state = self.STATE_IDLE
                     return response
 
-                # 5. State: Validation Pose
+                # 5. State: SAM3 Recheck (파지 검증 - 잔여 객체 수 확인)
                 self._state = self.STATE_VAL_POSE
-                self.get_logger().info('[State: VAL_POSE]')
-                if not self._send_move(self.val_pose, 'VAL_POSE'):
+                self.get_logger().info('[State: VAL_POSE] SAM3 recheck - 잔여 객체 수 확인')
+
+                # init_pose로 이동하여 카메라 시야 확보
+                if not self._send_move(self.init_pose, 'RECHECK_INIT', method='fk'):
                     response.success = False
                     self._state = self.STATE_IDLE
                     return response
 
+                recheck_count = self._call_count_objects(object_name)
+                self.get_logger().info(f'[SAM3 Recheck] detected_count={recheck_count}')
+
+                if recheck_count >= 3:
+                    # 파지 실패: 객체가 줄지 않음 → 이전 pick point에 놓고 재시도
+                    self.get_logger().warn(
+                        f'[SAM3 Recheck] 잔여 객체 {recheck_count}개 (>=3) → 파지 실패, 재시도'
+                    )
+                    # 이전 picking point로 돌아가서 놓기
+                    if not self._send_move(pick_pose, 'RETRY_RELEASE', grip=True):
+                        response.success = False
+                        self._state = self.STATE_IDLE
+                        return response
+                    retry_count += 1
+                    continue  # while 루프 처음으로 → INIT_POSE부터 재시도
+
                 # 6. State: Validate (VLM)
+                self.get_logger().info(f'[SAM3 Recheck] 잔여 객체 {recheck_count}개 (<3) → 파지 성공, VLM 검증 진행')
+
+                if not self._send_move(self.val_pose, 'VAL_POSE', method='fk'):
+                    response.success = False
+                    self._state = self.STATE_IDLE
+                    return response
+
                 self._state = self.STATE_VALIDATE
                 self.get_logger().info(f'[State: VALIDATE] VLM Verification for "{object_name}"')
-                
+
                 # TODO: VLM 판단을 위해 실제 카메라 모듈의 사진 캡처 로직을 연동하세요!
                 dummy_image = ['/tmp/vlm_validation_1.jpg']
                 vlm_result = self._call_vlm_judge(dummy_image, object_name, "상태 검수 및 파지 여부 확인")
-                
+
                 is_valid = False
                 if vlm_result is not None and vlm_result.decision == 'RETURN_APPROVED':
                     is_valid = True
@@ -483,13 +531,13 @@ class OrchestrationNode(Node):
                     self._state = self.STATE_PLACE_POSE
                     self.get_logger().info('[State: PLACE_POSE] Validation PASSED')
                     # Place + Gripper Open (grip=True: close→open)
-                    if not self._send_move(self.place_pose, 'PLACE_POSE', grip=True):
+                    if not self._send_move(self.place_pose, 'PLACE_POSE', grip=True, method='fk'):
                         response.success = False
                         self._state = self.STATE_IDLE
                         return response
 
                     # Return to init
-                    if not self._send_move(self.init_pose, 'RETURN_TO_INIT'):
+                    if not self._send_move(self.init_pose, 'RETURN_TO_INIT', method='fk'):
                         response.success = False
                         self._state = self.STATE_IDLE
                         return response
@@ -503,7 +551,7 @@ class OrchestrationNode(Node):
                     self._state = self.STATE_PLACE_RETURN
                     self.get_logger().warn(f'[State: PLACE_RETURN] Validation FAILED (Retry {retry_count})')
                     # Place Return + Gripper Open (grip=True: close→open)
-                    if not self._send_move(self.place_return_pose, 'PLACE_RETURN', grip=True):
+                    if not self._send_move(self.place_return_pose, 'PLACE_RETURN', grip=True, method='fk'):
                         response.success = False
                         self._state = self.STATE_IDLE
                         return response

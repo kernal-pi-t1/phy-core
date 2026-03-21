@@ -16,6 +16,8 @@ setup(
             glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
         (os.path.join('share', package_name, 'config'),
             glob(os.path.join('config', '*.yaml'))),
+        (os.path.join('share', package_name, 'image'),
+            glob(os.path.join('image', '*.png')) + glob(os.path.join('image', '*.json'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -29,6 +31,7 @@ setup(
             'phy_core_node = phy_core.node.phy_core_node:main',
             'sam3_node = phy_core.node.sam3_node:main',
             'vlm_node = phy_core.node.vlm_node:main',
+            'action_node = phy_core.node.action_node:main',
         ],
     },
 )
