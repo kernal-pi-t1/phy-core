@@ -56,13 +56,14 @@ class Sam3Node(Node):
             f'Loading PoseEstimator (device={device}, confidence={confidence}, '
             f'frame_skip={frame_skip})...'
         )
-        from phy_core.sam3 import PoseEstimator, capture_single_frame
+        from phy_core.sam3 import PoseEstimator, capture_single_frame, camera_to_base
         self._estimator = PoseEstimator(
             device=device,
             confidence_threshold=confidence,
             frame_skip=frame_skip,
         )
         self._capture = capture_single_frame
+        self._camera_to_base = camera_to_base
         self.get_logger().info('PoseEstimator loaded successfully.')
 
         # Lock for thread safety (SAM3 GPU model is not thread-safe)
@@ -89,9 +90,10 @@ class Sam3Node(Node):
                 )
             if poses:
                 p = poses[0]
-                response.pose = [p.x, p.y, p.z, p.roll, p.pitch, p.yaw]
+                bx, by, bz = self._camera_to_base(p.x, p.y, p.z)
+                response.pose = [bx, by, bz, p.roll, p.pitch, p.yaw]
                 self.get_logger().info(
-                    f'Detected: x={p.x:.4f} y={p.y:.4f} z={p.z:.4f} '
+                    f'Detected (base): x={bx:.4f} y={by:.4f} z={bz:.4f} '
                     f'r={p.roll:.2f} p={p.pitch:.2f} y={p.yaw:.2f}'
                 )
             else:

@@ -80,6 +80,14 @@ def pca_rotation_with_gravity(points_3d):
     return eigenvectors
 
 
+def camera_to_base(x, y, z):
+    """Convert camera-frame position to robot base-frame position.
+
+    Camera is mounted at offset (90, 4, 66) mm from the robot base origin.
+    """
+    return x + 90.0, y + 4.0, z + 66.0
+
+
 def rotation_matrix_to_rpy(R_mat):
     rpy = R.from_matrix(R_mat).as_euler('xyz', degrees=True)
     return float(rpy[0]), float(rpy[1]), float(rpy[2])
