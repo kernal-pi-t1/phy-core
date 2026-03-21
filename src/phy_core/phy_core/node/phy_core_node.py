@@ -218,14 +218,16 @@ class OrchestrationNode(Node):
     # ------------------------------------------------------------------
     # Robot Action & Gripper Helper
     # ------------------------------------------------------------------
-    def _send_move(self, pose, label=''):
+    def _send_move(self, pose, label='', grip=False):
         self.get_logger().info(
             f'[{label}] Move goal: '
             f'x={pose[0]:.4f} y={pose[1]:.4f} z={pose[2]:.4f} '
             f'r={pose[3]:.2f} p={pose[4]:.2f} y={pose[5]:.2f}'
+            f'{" (grip=TOGGLE)" if grip else ""}'
         )
         goal = Move.Goal()
         goal.target_pose = pose
+        goal.grip = grip
 
         try:
             future = self._robot_client.send_goal_async(goal)
@@ -427,14 +429,11 @@ class OrchestrationNode(Node):
                     self._state = self.STATE_IDLE
                     return response
 
-                # (2) Descend
-                if not self._send_move(pick_pose, 'DESCEND'):
+                # (2) Descend + Gripper Close (grip=True: open→close)
+                if not self._send_move(pick_pose, 'DESCEND', grip=True):
                     response.success = False
                     self._state = self.STATE_IDLE
                     return response
-
-                # (3) Gripper Close
-                self._close_gripper()
 
                 # -------------------------------
                 # 4.5. 1차 검수: 물리 토크(Current) 측정
@@ -483,13 +482,11 @@ class OrchestrationNode(Node):
                 if is_valid:
                     self._state = self.STATE_PLACE_POSE
                     self.get_logger().info('[State: PLACE_POSE] Validation PASSED')
-                    if not self._send_move(self.place_pose, 'PLACE_POSE'):
+                    # Place + Gripper Open (grip=True: close→open)
+                    if not self._send_move(self.place_pose, 'PLACE_POSE', grip=True):
                         response.success = False
                         self._state = self.STATE_IDLE
                         return response
-
-                    # Release Gripper
-                    self._open_gripper()
 
                     # Return to init
                     if not self._send_move(self.init_pose, 'RETURN_TO_INIT'):
@@ -505,13 +502,11 @@ class OrchestrationNode(Node):
                     retry_count += 1
                     self._state = self.STATE_PLACE_RETURN
                     self.get_logger().warn(f'[State: PLACE_RETURN] Validation FAILED (Retry {retry_count})')
-                    if not self._send_move(self.place_return_pose, 'PLACE_RETURN'):
+                    # Place Return + Gripper Open (grip=True: close→open)
+                    if not self._send_move(self.place_return_pose, 'PLACE_RETURN', grip=True):
                         response.success = False
                         self._state = self.STATE_IDLE
                         return response
-                    
-                    # Release Gripper for invalid object
-                    self._open_gripper()
 
         except Exception as e:
             self.get_logger().error(f'[FATAL Error in State Machine] {e}')

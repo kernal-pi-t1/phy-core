@@ -1,0 +1,16 @@
+  Trial  1: OK detected=3
+  Trial  2: OK detected=3
+  Trial  3: OK detected=3
+  Trial  4: OK detected=3
+  Trial  5: OK detected=3
+  Trial  6: OK detected=3
+  Trial  7: OK detected=3
+  Trial  8: OK detected=3
+  Trial  9: OK detected=3
+  Trial 10: OK detected=3
+
+  threshold=0.005
+  detection_rate=100% (10/10)
+  consistency_bonus=9.4
+  max_position_std=0.0006m
+  SCORE=109.4
