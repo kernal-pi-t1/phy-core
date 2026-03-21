@@ -130,7 +130,23 @@ def main():
         cv2.imwrite(os.path.join(out_dir, "03_overlay_full.png"), overlay_full)
         print(f"  Saved: {out_dir}/01_input.png, 02_overlay_crop.png, 03_overlay_full.png")
     else:
-        print("  No masks — nothing to visualize.")
+        # No masks — still save and show the input image
+        cv2.imwrite(os.path.join(out_dir, "02_overlay_crop.png"), color_cropped)
+        overlay_full = color_bgr.copy()
+        if crop:
+            x1, y1, x2, y2 = crop
+            cv2.rectangle(overlay_full, (x1, y1), (x2, y2), (255, 255, 255), 2)
+            cv2.putText(overlay_full, f"crop ({x1},{y1})-({x2},{y2}) - NO MASKS",
+                        (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        cv2.imwrite(os.path.join(out_dir, "03_overlay_full.png"), overlay_full)
+        print(f"  No masks detected. Saved input images to {out_dir}/")
+
+    # Show result on screen (use subprocess to avoid GTK issues)
+    show_path = os.path.join(out_dir, "03_overlay_full.png")
+    if os.path.exists(show_path):
+        import subprocess
+        print(f"\nOpening: {show_path}")
+        subprocess.Popen(["eog", show_path], env={**os.environ, "DISPLAY": ":0"})
 
     print(f"\n=== RESULT: {n_masks} masks, {elapsed:.1f}ms ===")
 
