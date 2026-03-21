@@ -31,9 +31,13 @@ except ImportError:
 
 from std_msgs.msg import Int32
 from std_srvs.srv import Trigger
-from dsr_msgs2.srv import FlangeSerialOpen, FlangeSerialClose, FlangeSerialWrite, FlangeSerialRead
+try:
+    from dsr_msgs2.srv import FlangeSerialOpen, FlangeSerialClose, FlangeSerialWrite, FlangeSerialRead
+    FLANGE_SERIAL_DEPS = True
+except ImportError:
+    FLANGE_SERIAL_DEPS = False
 from phy_interface.srv import Json, GetPose, VlmJudge
-from e0509_gripper_description.action import Move
+from phy_interface.action import Move
 
 _ZERO_POSE = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -110,22 +114,29 @@ class OrchestrationNode(Node):
         )
 
         # --- Flange Serial Clients for Modbus Polling ---
-        self.flange_open_cli = self.create_client(
-            FlangeSerialOpen, '/dsr01/gripper/flange_serial_open',
-            callback_group=self._client_cb_group
-        )
-        self.flange_write_cli = self.create_client(
-            FlangeSerialWrite, '/dsr01/gripper/flange_serial_write',
-            callback_group=self._client_cb_group
-        )
-        self.flange_read_cli = self.create_client(
-            FlangeSerialRead, '/dsr01/gripper/flange_serial_read',
-            callback_group=self._client_cb_group
-        )
-        self.flange_close_cli = self.create_client(
-            FlangeSerialClose, '/dsr01/gripper/flange_serial_close',
-            callback_group=self._client_cb_group
-        )
+        if FLANGE_SERIAL_DEPS:
+            self.flange_open_cli = self.create_client(
+                FlangeSerialOpen, '/dsr01/gripper/flange_serial_open',
+                callback_group=self._client_cb_group
+            )
+            self.flange_write_cli = self.create_client(
+                FlangeSerialWrite, '/dsr01/gripper/flange_serial_write',
+                callback_group=self._client_cb_group
+            )
+            self.flange_read_cli = self.create_client(
+                FlangeSerialRead, '/dsr01/gripper/flange_serial_read',
+                callback_group=self._client_cb_group
+            )
+            self.flange_close_cli = self.create_client(
+                FlangeSerialClose, '/dsr01/gripper/flange_serial_close',
+                callback_group=self._client_cb_group
+            )
+        else:
+            self.get_logger().warn('FlangeSerial services not available. Torque reading disabled.')
+            self.flange_open_cli = None
+            self.flange_write_cli = None
+            self.flange_read_cli = None
+            self.flange_close_cli = None
 
         # --- Wait for dependencies ---
         self.get_logger().info('Waiting for sam3_node get_pose service...')
@@ -257,6 +268,9 @@ class OrchestrationNode(Node):
 
     def _read_gripper_torque(self):
         """플랜지 시리얼을 점유하여 Modbus FC03으로 그리퍼 전류(Torque)를 측정하고 포트를 닫습니다."""
+        if self.flange_open_cli is None:
+            self.get_logger().warn('[GRIPPER] FlangeSerial not available. Skipping torque read.')
+            return -1
         self.get_logger().info('[GRIPPER] 시리얼 통신 개방 및 토크(전류) 센서 폴링 시작...')
         
         # 1. Serial Open
