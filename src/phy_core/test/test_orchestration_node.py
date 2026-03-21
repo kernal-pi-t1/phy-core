@@ -19,7 +19,7 @@ class TestOrchestrationNodeConstants(unittest.TestCase):
         assert OrchestrationNode.STATE_IDLE == 'IDLE'
         assert OrchestrationNode.STATE_INIT_POSE == 'INIT_POSE'
         assert OrchestrationNode.STATE_GET_PICK_POSE == 'GET_PICK_POSE'
-        assert OrchestrationNode.STATE_PICK_POSE == 'PICK_POSE'
+        assert OrchestrationNode.STATE_PICK_EXECUTE == 'PICK_EXECUTE'
         assert OrchestrationNode.STATE_VAL_POSE == 'VAL_POSE'
         assert OrchestrationNode.STATE_VALIDATE == 'VALIDATE'
         assert OrchestrationNode.STATE_PLACE_POSE == 'PLACE_POSE'
@@ -255,13 +255,23 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
     def tearDown(self):
         self.node.destroy_node()
 
-    def test_task_success_flow(self):
-        """Full success: init->get_pose->pick->val->validate(pass)->place->init."""
-        pick_pose = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
-        val_pose = [0.7, 0.8, 0.9, 1.0, 1.1, 1.2]
-
+    def _mock_helpers(self):
+        """Mock all helper methods for task callback tests."""
         self.node._send_move = MagicMock(return_value=True)
-        self.node._call_get_pose = MagicMock(side_effect=[pick_pose, val_pose])
+        self.node._open_gripper = MagicMock()
+        self.node._close_gripper = MagicMock()
+        self.node._read_gripper_torque = MagicMock(return_value=100)
+        self.node._transform_pose = MagicMock(side_effect=lambda p: p)
+
+        vlm_ok = MagicMock()
+        vlm_ok.decision = 'RETURN_APPROVED'
+        self.node._call_vlm_judge = MagicMock(return_value=vlm_ok)
+
+    def test_task_success_flow(self):
+        """Full success: init->pre_grasp->descend->lift->val->place->return."""
+        pick_pose = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+        self._mock_helpers()
+        self.node._call_get_pose = MagicMock(return_value=pick_pose)
 
         request = MagicMock()
         request.payload = 'cup'
@@ -271,12 +281,12 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
 
         assert result.success is True
         assert self.node._state == 'IDLE'
-        # init + pick + val + place + return_to_init = 5 moves
-        assert self.node._send_move.call_count == 5
+        # init + pre_grasp + descend + lift + val + place + return = 7 moves
+        assert self.node._send_move.call_count == 7
 
     def test_task_fail_object_not_detected(self):
         """Fail when sam3 cannot detect the object."""
-        self.node._send_move = MagicMock(return_value=True)
+        self._mock_helpers()
         self.node._call_get_pose = MagicMock(return_value=None)
 
         request = MagicMock()
@@ -290,6 +300,7 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
 
     def test_task_fail_init_move_fails(self):
         """Fail when robot cannot reach init pose."""
+        self._mock_helpers()
         self.node._send_move = MagicMock(return_value=False)
 
         request = MagicMock()
@@ -301,17 +312,33 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
         assert result.success is False
         assert self.node._state == 'IDLE'
 
-    def test_task_retry_on_validation_fail(self):
-        """When validation fails, retry; succeed on second attempt."""
+    def test_task_fail_torque_too_low(self):
+        """Fail when gripper torque indicates empty grasp."""
         pick_pose = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
-        val_detected = [0.7, 0.8, 0.9, 1.0, 1.1, 1.2]
+        self._mock_helpers()
+        self.node._call_get_pose = MagicMock(return_value=pick_pose)
+        self.node._read_gripper_torque = MagicMock(return_value=10)
 
-        # 1st: get_pose ok, validate fail -> retry
-        # 2nd: get_pose ok, validate ok -> success
-        self.node._call_get_pose = MagicMock(
-            side_effect=[pick_pose, None, pick_pose, val_detected]
-        )
-        self.node._send_move = MagicMock(return_value=True)
+        request = MagicMock()
+        request.payload = 'cup'
+        response = MagicMock()
+
+        result = self.node._task_callback(request, response)
+
+        assert result.success is False
+        assert self.node._state == 'IDLE'
+
+    def test_task_retry_on_validation_fail(self):
+        """When VLM validation fails, retry; succeed on second attempt."""
+        pick_pose = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+        self._mock_helpers()
+        self.node._call_get_pose = MagicMock(return_value=pick_pose)
+
+        vlm_fail = MagicMock()
+        vlm_fail.decision = 'REJECTED'
+        vlm_ok = MagicMock()
+        vlm_ok.decision = 'RETURN_APPROVED'
+        self.node._call_vlm_judge = MagicMock(side_effect=[vlm_fail, vlm_ok])
 
         request = MagicMock()
         request.payload = 'cup'
@@ -321,7 +348,7 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
 
         assert result.success is True
         assert self.node._state == 'IDLE'
-        # Retry 1: init+pick+val+place_return = 4
-        # Retry 2: init+pick+val+place+return_init = 5
-        # Total = 9
-        assert self.node._send_move.call_count == 9
+        # Retry 1: init+pre_grasp+descend+lift+val+place_return = 6
+        # Retry 2: init+pre_grasp+descend+lift+val+place+return = 7
+        # Total = 13
+        assert self.node._send_move.call_count == 13

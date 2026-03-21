@@ -5,3 +5,9 @@
 [submodule "src/phy_interface"]
 	path = src/phy_interface
 	url = https://github.com/kernal-pi-t1/phy-interface.git
+[submodule "src/doosan-robot2"]
+	path = src/doosan-robot2
+	url = https://github.com/kernal-pi-t1/doosan-robot2.git
+[submodule "src/e0509_gripper_description"]
+	path = src/e0509_gripper_description
+	url = https://github.com/kernal-pi-t1/e0509_gripper_description.git
