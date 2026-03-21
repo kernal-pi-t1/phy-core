@@ -2,7 +2,8 @@
 
 Launches:
     - sam3_node: SAM3 perception service server
-    - orchestration_node: State machine orchestrator
+    - vlm_node: VLM validation service server
+    - phy_core_node: State machine orchestrator
 
 PYTHONPATH is extended to include:
     - /home/robot/jm_ws (for pose_estimator, capture_realsense)
@@ -42,6 +43,14 @@ def generate_launch_description():
             name='sam3_node',
             output='screen',
             parameters=[config_file],
+        ),
+
+        # VLM validation node
+        Node(
+            package='phy_core',
+            executable='vlm_node',
+            name='vlm_node',
+            output='screen',
         ),
 
         # Core orchestration node
