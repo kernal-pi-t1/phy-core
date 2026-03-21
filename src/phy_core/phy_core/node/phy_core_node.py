@@ -4,7 +4,7 @@ State machine that coordinates robot_node (Move action) and sam3_node
 (GetPose service) for pick-validate-place cycles.
 
 Receives prompts via Json service, orchestrates the full cycle:
-init_pose -> get_pose -> TF Transform -> [Pre-Grasp -> Descend -> Close Gripper -> Lift]
+init_pose -> get_pose -> Camera→Base Transform -> [Pre-Grasp -> Descend -> Close Gripper -> Lift]
 -> val_pose -> VLM validate -> place/retry
 
 Threading model:
@@ -13,21 +13,14 @@ Threading model:
     - ReentrantCallbackGroup for outbound clients
 """
 
+import math
 import time
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.action import ActionClient
-
-import tf2_ros
-from geometry_msgs.msg import PoseStamped
-try:
-    import tf2_geometry_msgs
-    from scipy.spatial.transform import Rotation as SciRotation
-    TF_DEPS = True
-except ImportError:
-    TF_DEPS = False
 
 from std_msgs.msg import Int32
 from std_srvs.srv import Trigger
@@ -71,9 +64,17 @@ class OrchestrationNode(Node):
         self.place_pose = self._load_pose_param('place_pose')
         self.place_return_pose = self._load_pose_param('place_return_pose')
 
-        # --- TF Buffer and Listener ---
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+        # --- Camera extrinsics (fixed camera → base frame) ---
+        self.declare_parameter('camera_offset', [0.80, 0.0, 0.66])
+        self.declare_parameter('camera_rpy', [0.0, 0.0, 0.0])
+        self.camera_offset = list(
+            self.get_parameter('camera_offset').get_parameter_value().double_array_value
+        )
+        camera_rpy_deg = list(
+            self.get_parameter('camera_rpy').get_parameter_value().double_array_value
+        )
+        self.camera_rpy_rad = [math.radians(v) for v in camera_rpy_deg]
+        self.get_logger().info(f'Camera offset: {self.camera_offset}, rpy(deg): {camera_rpy_deg}')
 
         # --- Service server (entry point) ---
         self._task_service = self.create_service(
@@ -162,52 +163,57 @@ class OrchestrationNode(Node):
         return values
 
     # ------------------------------------------------------------------
-    # TF Transform Helper
+    # Coordinate Transform Helper (Fixed Camera → Base Frame)
     # ------------------------------------------------------------------
-    def _transform_pose(self, camera_pose_arr, from_frame='camera_color_optical_frame', to_frame='base_0'):
-        """Transform float64[6] pose from camera frame to robot base frame."""
-        if not TF_DEPS:
-            self.get_logger().warn('TF dependencies (tf2_geometry_msgs, scipy) not found. Skip TF.')
-            return camera_pose_arr
-            
-        try:
-            trans = self.tf_buffer.lookup_transform(to_frame, from_frame, rclpy.time.Time(), rclpy.duration.Duration(seconds=2.0))
-            
-            pose_in = PoseStamped()
-            pose_in.header.frame_id = from_frame
-            pose_in.pose.position.x = camera_pose_arr[0]
-            pose_in.pose.position.y = camera_pose_arr[1]
-            pose_in.pose.position.z = camera_pose_arr[2]
-            
-            # Simple Euler (XYZ) to Quaternion
-            rot = SciRotation.from_euler('xyz', [camera_pose_arr[3], camera_pose_arr[4], camera_pose_arr[5]])
-            q = rot.as_quat() # [x, y, z, w]
-            pose_in.pose.orientation.x = q[0]
-            pose_in.pose.orientation.y = q[1]
-            pose_in.pose.orientation.z = q[2]
-            pose_in.pose.orientation.w = q[3]
-            
-            pose_out = tf2_geometry_msgs.do_transform_pose(pose_in, trans)
-            
-            out_q = [
-                pose_out.pose.orientation.x,
-                pose_out.pose.orientation.y,
-                pose_out.pose.orientation.z,
-                pose_out.pose.orientation.w
-            ]
-            r, p, y = SciRotation.from_quat(out_q).as_euler('xyz')
-            
-            transformed = [
-                pose_out.pose.position.x,
-                pose_out.pose.position.y,
-                pose_out.pose.position.z,
-                float(r), float(p), float(y)
-            ]
-            self.get_logger().info(f'[TF] Transformed Pose: {transformed}')
-            return transformed
-        except Exception as e:
-            self.get_logger().warn(f'[TF] Transform failed ({e}). Using original pose.')
-            return camera_pose_arr
+    @staticmethod
+    def _euler_to_rot_matrix(roll, pitch, yaw):
+        """Euler XYZ (rad) → 3x3 rotation matrix."""
+        cr, sr = math.cos(roll), math.sin(roll)
+        cp, sp = math.cos(pitch), math.sin(pitch)
+        cy, sy = math.cos(yaw), math.sin(yaw)
+        return np.array([
+            [cy*cp,  cy*sp*sr - sy*cr,  cy*sp*cr + sy*sr],
+            [sy*cp,  sy*sp*sr + cy*cr,  sy*sp*cr - cy*sr],
+            [  -sp,             cp*sr,             cp*cr],
+        ])
+
+    def _transform_pose(self, camera_pose_arr):
+        """Transform float64[6] pose from camera optical frame to base frame.
+
+        Uses fixed camera extrinsics (camera_offset, camera_rpy) from YAML.
+        Camera optical frame convention: X-right, Y-down, Z-forward(depth).
+        """
+        obj_cam = np.array(camera_pose_arr[:3])
+
+        # Camera optical frame → base frame rotation
+        R_cam = self._euler_to_rot_matrix(*self.camera_rpy_rad)
+
+        # Position: rotate then translate
+        obj_base = R_cam @ obj_cam + np.array(self.camera_offset)
+
+        # Orientation: compose rotations
+        R_obj_cam = self._euler_to_rot_matrix(
+            camera_pose_arr[3], camera_pose_arr[4], camera_pose_arr[5]
+        )
+        R_obj_base = R_cam @ R_obj_cam
+
+        # Extract Euler XYZ from composed rotation
+        pitch = math.asin(np.clip(-R_obj_base[2, 0], -1.0, 1.0))
+        if abs(math.cos(pitch)) > 1e-6:
+            roll = math.atan2(R_obj_base[2, 1], R_obj_base[2, 2])
+            yaw = math.atan2(R_obj_base[1, 0], R_obj_base[0, 0])
+        else:
+            roll = math.atan2(-R_obj_base[1, 2], R_obj_base[1, 1])
+            yaw = 0.0
+
+        transformed = [
+            float(obj_base[0]), float(obj_base[1]), float(obj_base[2]),
+            float(roll), float(pitch), float(yaw),
+        ]
+        self.get_logger().info(
+            f'[Transform] cam={camera_pose_arr[:3]} → base={transformed[:3]}'
+        )
+        return transformed
 
     # ------------------------------------------------------------------
     # Robot Action & Gripper Helper
