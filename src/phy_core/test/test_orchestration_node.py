@@ -397,12 +397,12 @@ class TestDetectAndTransform(unittest.TestCase):
         cam_pose = [0.1, 0.05, 0.5, 0.0, 0.0, 0.0]
         result = self.node._transform_pose(cam_pose)
 
-        # position = cam + offset
-        np.testing.assert_allclose(result[0], 0.1 + 0.80, atol=1e-6)
-        np.testing.assert_allclose(result[1], 0.05 + 0.0, atol=1e-6)
-        np.testing.assert_allclose(result[2], 0.5 + 0.66, atol=1e-6)
-        # orientation unchanged
-        np.testing.assert_allclose(result[3:], [0.0, 0.0, 0.0], atol=1e-6)
+        # position = (cam + offset) * 1000 (mm)
+        np.testing.assert_allclose(result[0], (0.1 + 0.80) * 1000, atol=1e-3)
+        np.testing.assert_allclose(result[1], (0.05 + 0.0) * 1000, atol=1e-3)
+        np.testing.assert_allclose(result[2], (0.5 + 0.66) * 1000, atol=1e-3)
+        # orientation unchanged (deg)
+        np.testing.assert_allclose(result[3:], [0.0, 0.0, 0.0], atol=1e-3)
 
     def test_transform_with_camera_yaw_90(self):
         """camera yaw=90° rotates X→Y, Y→-X in base frame."""
@@ -412,10 +412,10 @@ class TestDetectAndTransform(unittest.TestCase):
         cam_pose = [0.1, 0.0, 0.5, 0.0, 0.0, 0.0]
         result = self.node._transform_pose(cam_pose)
 
-        # R_yaw90 @ [0.1, 0, 0.5] = [0, 0.1, 0.5] + offset
-        np.testing.assert_allclose(result[0], 0.0 + 0.80, atol=1e-6)
-        np.testing.assert_allclose(result[1], 0.1 + 0.0, atol=1e-6)
-        np.testing.assert_allclose(result[2], 0.5 + 0.66, atol=1e-6)
+        # R_yaw90 @ [0.1, 0, 0.5] = [0, 0.1, 0.5] + offset, in mm
+        np.testing.assert_allclose(result[0], (0.0 + 0.80) * 1000, atol=1e-3)
+        np.testing.assert_allclose(result[1], (0.1 + 0.0) * 1000, atol=1e-3)
+        np.testing.assert_allclose(result[2], (0.5 + 0.66) * 1000, atol=1e-3)
 
     def test_transform_preserves_6dof(self):
         """Result always has 6 float elements."""
@@ -436,9 +436,9 @@ class TestDetectAndTransform(unittest.TestCase):
         cam_pose = [-0.1, -0.2, 0.3, 0.0, 0.0, 0.0]
         result = self.node._transform_pose(cam_pose)
 
-        np.testing.assert_allclose(result[0], -0.1 + 0.80, atol=1e-6)
-        np.testing.assert_allclose(result[1], -0.2 + 0.0, atol=1e-6)
-        np.testing.assert_allclose(result[2], 0.3 + 0.66, atol=1e-6)
+        np.testing.assert_allclose(result[0], (-0.1 + 0.80) * 1000, atol=1e-3)
+        np.testing.assert_allclose(result[1], (-0.2 + 0.0) * 1000, atol=1e-3)
+        np.testing.assert_allclose(result[2], (0.3 + 0.66) * 1000, atol=1e-3)
 
     # ------------------------------------------------------------------
     # detect → transform end-to-end
@@ -464,9 +464,9 @@ class TestDetectAndTransform(unittest.TestCase):
         # Step 2: transform
         base_pose = self.node._transform_pose(detected)
 
-        np.testing.assert_allclose(base_pose[0], 0.15 + 0.80, atol=1e-6)
-        np.testing.assert_allclose(base_pose[1], -0.05 + 0.0, atol=1e-6)
-        np.testing.assert_allclose(base_pose[2], 0.40 + 0.66, atol=1e-6)
+        np.testing.assert_allclose(base_pose[0], (0.15 + 0.80) * 1000, atol=1e-3)
+        np.testing.assert_allclose(base_pose[1], (-0.05 + 0.0) * 1000, atol=1e-3)
+        np.testing.assert_allclose(base_pose[2], (0.40 + 0.66) * 1000, atol=1e-3)
 
     @patch('rclpy.spin_until_future_complete')
     def test_detect_failure_returns_none(self, mock_spin):
@@ -497,7 +497,7 @@ class TestDetectAndTransform(unittest.TestCase):
         detected, count = self.node._call_get_pose('cup')
         base_pose = self.node._transform_pose(detected)
 
-        # yaw 90°: X_cam→Y_base, Y_cam→-X_base
-        np.testing.assert_allclose(base_pose[0], 0.0 + 0.80, atol=1e-6)
-        np.testing.assert_allclose(base_pose[1], 0.2 + 0.0, atol=1e-6)
-        np.testing.assert_allclose(base_pose[2], 0.5 + 0.66, atol=1e-6)
+        # yaw 90°: X_cam→Y_base, Y_cam→-X_base, in mm
+        np.testing.assert_allclose(base_pose[0], (0.0 + 0.80) * 1000, atol=1e-3)
+        np.testing.assert_allclose(base_pose[1], (0.2 + 0.0) * 1000, atol=1e-3)
+        np.testing.assert_allclose(base_pose[2], (0.5 + 0.66) * 1000, atol=1e-3)

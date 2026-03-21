@@ -13,6 +13,7 @@ Threading model:
     - ReentrantCallbackGroup for outbound clients
 """
 
+import math
 import time
 import rclpy
 from rclpy.node import Node
@@ -173,12 +174,25 @@ class OrchestrationNode(Node):
     # Coordinate Transform Helper (Fixed Camera → Base Frame)
     # ------------------------------------------------------------------
     def _transform_pose(self, camera_pose_arr):
-        """Transform float64[6] pose from camera optical frame to base frame."""
+        """Transform float64[6] pose from camera optical frame to base frame.
+
+        Returns Doosan-compatible units: position in mm, orientation in degrees.
+        """
         transformed = self._cam_to_base.transform_pose(camera_pose_arr)
+
+        # SI (m, rad) → Doosan (mm, deg)
+        result = [
+            transformed[0] * 1000.0,  # m → mm
+            transformed[1] * 1000.0,
+            transformed[2] * 1000.0,
+            math.degrees(transformed[3]),  # rad → deg
+            math.degrees(transformed[4]),
+            math.degrees(transformed[5]),
+        ]
         self.get_logger().info(
-            f'[Transform] cam={camera_pose_arr[:3]} → base={transformed[:3]}'
+            f'[Transform] cam(m)={camera_pose_arr[:3]} → base(mm)={result[:3]}'
         )
-        return transformed
+        return result
 
     # ------------------------------------------------------------------
     # Robot Action & Gripper Helper
@@ -403,7 +417,7 @@ class OrchestrationNode(Node):
                 
                 # (1) Pre-Grasp (Z + 10cm)
                 pre_grasp_pose = list(pick_pose)
-                pre_grasp_pose[2] += 0.10
+                pre_grasp_pose[2] += 100.0  # +100mm pre-grasp height
                 if not self._send_move(pre_grasp_pose, 'PRE_GRASP'):
                     response.success = False
                     self._state = self.STATE_IDLE
