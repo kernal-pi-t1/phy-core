@@ -53,6 +53,14 @@ def generate_launch_description():
             output='screen',
         ),
 
+        # Action server (IK + MoveJoint + Gripper)
+        Node(
+            package='phy_core',
+            executable='action_node',
+            name='action_node',
+            output='screen',
+        ),
+
         # Core orchestration node
         Node(
             package='phy_core',

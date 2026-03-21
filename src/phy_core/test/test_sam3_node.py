@@ -61,7 +61,6 @@ class TestSam3NodeInit(unittest.TestCase):
                 import threading
                 self_node._estimator = MagicMock()
                 self_node._capture = MagicMock()
-                self_node._camera_to_base = MagicMock(side_effect=lambda x, y, z: (x, y, z))
                 self_node._lock = threading.Lock()
 
                 from phy_interface.srv import GetPose
@@ -129,7 +128,6 @@ class TestSam3NodeCallback(unittest.TestCase):
 
             self_node._estimator = MagicMock()
             self_node._capture = MagicMock()
-            self_node._camera_to_base = MagicMock(side_effect=lambda x, y, z: (x, y, z))
             self_node._lock = threading.Lock()
 
             from phy_interface.srv import GetPose

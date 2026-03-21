@@ -139,7 +139,7 @@ class TestOrchestrationNodeCallGetPose(unittest.TestCase):
         mock_future.result.return_value = mock_result
         self.node._get_pose_client.call_async = MagicMock(return_value=mock_future)
 
-        result = self.node._call_get_pose('test_object')
+        result, count = self.node._call_get_pose('test_object')
         assert result == expected_pose
 
     @patch('rclpy.spin_until_future_complete')
@@ -152,7 +152,7 @@ class TestOrchestrationNodeCallGetPose(unittest.TestCase):
         mock_future.result.return_value = mock_result
         self.node._get_pose_client.call_async = MagicMock(return_value=mock_future)
 
-        result = self.node._call_get_pose('test_object')
+        result, count = self.node._call_get_pose('test_object')
         assert result is None
 
 
@@ -264,6 +264,7 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
         self.node._close_gripper = MagicMock()
         self.node._read_gripper_torque = MagicMock(return_value=100)
         self.node._transform_pose = MagicMock(side_effect=lambda p: p)
+        self.node._call_count_objects = MagicMock(return_value=0)
 
         vlm_ok = MagicMock()
         vlm_ok.decision = 'RETURN_APPROVED'
@@ -273,7 +274,7 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
         """Full success: init->pre_grasp->descend->lift->val->place->return."""
         pick_pose = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
         self._mock_helpers()
-        self.node._call_get_pose = MagicMock(return_value=pick_pose)
+        self.node._call_get_pose = MagicMock(return_value=(pick_pose, 1))
 
         request = MagicMock()
         request.payload = 'cup'
@@ -283,13 +284,13 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
 
         assert result.success is True
         assert self.node._state == 'IDLE'
-        # init + pre_grasp + descend + lift + val + place + return = 7 moves
-        assert self.node._send_move.call_count == 7
+        # init + pre_grasp + descend + lift + recheck_init + val + place + return = 8 moves
+        assert self.node._send_move.call_count == 8
 
     def test_task_fail_object_not_detected(self):
         """Fail when sam3 cannot detect the object."""
         self._mock_helpers()
-        self.node._call_get_pose = MagicMock(return_value=None)
+        self.node._call_get_pose = MagicMock(return_value=(None, 0))
 
         request = MagicMock()
         request.payload = 'cup'
@@ -318,7 +319,7 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
         """Fail when gripper torque indicates empty grasp."""
         pick_pose = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
         self._mock_helpers()
-        self.node._call_get_pose = MagicMock(return_value=pick_pose)
+        self.node._call_get_pose = MagicMock(return_value=(pick_pose, 1))
         self.node._read_gripper_torque = MagicMock(return_value=10)
 
         request = MagicMock()
@@ -334,7 +335,7 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
         """When VLM validation fails, retry; succeed on second attempt."""
         pick_pose = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
         self._mock_helpers()
-        self.node._call_get_pose = MagicMock(return_value=pick_pose)
+        self.node._call_get_pose = MagicMock(return_value=(pick_pose, 1))
 
         vlm_fail = MagicMock()
         vlm_fail.decision = 'REJECTED'
@@ -350,10 +351,10 @@ class TestOrchestrationNodeTaskCallback(unittest.TestCase):
 
         assert result.success is True
         assert self.node._state == 'IDLE'
-        # Retry 1: init+pre_grasp+descend+lift+val+place_return = 6
-        # Retry 2: init+pre_grasp+descend+lift+val+place+return = 7
-        # Total = 13
-        assert self.node._send_move.call_count == 13
+        # Retry 1: init+pre_grasp+descend+lift+recheck_init+val+place_return = 7
+        # Retry 2: init+pre_grasp+descend+lift+recheck_init+val+place+return = 8
+        # Total = 15
+        assert self.node._send_move.call_count == 15
 
 
 class TestDetectAndTransform(unittest.TestCase):
@@ -390,8 +391,8 @@ class TestDetectAndTransform(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_transform_identity_rotation(self):
         """camera_rpy=0 → base = cam_pos + offset, orientation unchanged."""
-        self.node.camera_offset = [0.80, 0.0, 0.66]
-        self.node.camera_rpy_rad = [0.0, 0.0, 0.0]
+        from phy_core.transform import CameraToBaseTransform
+        self.node._cam_to_base = CameraToBaseTransform([0.80, 0.0, 0.66], [0.0, 0.0, 0.0])
 
         cam_pose = [0.1, 0.05, 0.5, 0.0, 0.0, 0.0]
         result = self.node._transform_pose(cam_pose)
@@ -405,8 +406,8 @@ class TestDetectAndTransform(unittest.TestCase):
 
     def test_transform_with_camera_yaw_90(self):
         """camera yaw=90° rotates X→Y, Y→-X in base frame."""
-        self.node.camera_offset = [0.80, 0.0, 0.66]
-        self.node.camera_rpy_rad = [0.0, 0.0, math.radians(90.0)]
+        from phy_core.transform import CameraToBaseTransform
+        self.node._cam_to_base = CameraToBaseTransform([0.80, 0.0, 0.66], [0.0, 0.0, 90.0])
 
         cam_pose = [0.1, 0.0, 0.5, 0.0, 0.0, 0.0]
         result = self.node._transform_pose(cam_pose)
@@ -418,8 +419,8 @@ class TestDetectAndTransform(unittest.TestCase):
 
     def test_transform_preserves_6dof(self):
         """Result always has 6 float elements."""
-        self.node.camera_offset = [0.80, 0.0, 0.66]
-        self.node.camera_rpy_rad = [0.0, 0.0, 0.0]
+        from phy_core.transform import CameraToBaseTransform
+        self.node._cam_to_base = CameraToBaseTransform([0.80, 0.0, 0.66], [0.0, 0.0, 0.0])
 
         cam_pose = [0.3, -0.1, 0.4, 0.1, -0.2, 0.3]
         result = self.node._transform_pose(cam_pose)
@@ -429,8 +430,8 @@ class TestDetectAndTransform(unittest.TestCase):
 
     def test_transform_negative_camera_coords(self):
         """Negative camera coordinates transform correctly."""
-        self.node.camera_offset = [0.80, 0.0, 0.66]
-        self.node.camera_rpy_rad = [0.0, 0.0, 0.0]
+        from phy_core.transform import CameraToBaseTransform
+        self.node._cam_to_base = CameraToBaseTransform([0.80, 0.0, 0.66], [0.0, 0.0, 0.0])
 
         cam_pose = [-0.1, -0.2, 0.3, 0.0, 0.0, 0.0]
         result = self.node._transform_pose(cam_pose)
@@ -445,8 +446,8 @@ class TestDetectAndTransform(unittest.TestCase):
     @patch('rclpy.spin_until_future_complete')
     def test_detect_then_transform_pipeline(self, mock_spin):
         """Full pipeline: get_pose returns camera pose → _transform_pose → base coords."""
-        self.node.camera_offset = [0.80, 0.0, 0.66]
-        self.node.camera_rpy_rad = [0.0, 0.0, 0.0]
+        from phy_core.transform import CameraToBaseTransform
+        self.node._cam_to_base = CameraToBaseTransform([0.80, 0.0, 0.66], [0.0, 0.0, 0.0])
 
         cam_pose = [0.15, -0.05, 0.40, 0.0, 0.0, 0.0]
 
@@ -457,7 +458,7 @@ class TestDetectAndTransform(unittest.TestCase):
         self.node._get_pose_client.call_async = MagicMock(return_value=mock_future)
 
         # Step 1: detect
-        detected = self.node._call_get_pose('test_object')
+        detected, count = self.node._call_get_pose('test_object')
         assert detected == cam_pose
 
         # Step 2: transform
@@ -476,14 +477,14 @@ class TestDetectAndTransform(unittest.TestCase):
         mock_future.result.return_value = mock_result
         self.node._get_pose_client.call_async = MagicMock(return_value=mock_future)
 
-        detected = self.node._call_get_pose('nonexistent_object')
+        detected, count = self.node._call_get_pose('nonexistent_object')
         assert detected is None
 
     @patch('rclpy.spin_until_future_complete')
     def test_detect_transform_with_rotated_camera(self, mock_spin):
         """Detect + transform with non-zero camera RPY."""
-        self.node.camera_offset = [0.80, 0.0, 0.66]
-        self.node.camera_rpy_rad = [0.0, 0.0, math.radians(90.0)]
+        from phy_core.transform import CameraToBaseTransform
+        self.node._cam_to_base = CameraToBaseTransform([0.80, 0.0, 0.66], [0.0, 0.0, 90.0])
 
         cam_pose = [0.2, 0.0, 0.5, 0.0, 0.0, 0.0]
 
@@ -493,7 +494,7 @@ class TestDetectAndTransform(unittest.TestCase):
         mock_future.result.return_value = mock_result
         self.node._get_pose_client.call_async = MagicMock(return_value=mock_future)
 
-        detected = self.node._call_get_pose('cup')
+        detected, count = self.node._call_get_pose('cup')
         base_pose = self.node._transform_pose(detected)
 
         # yaw 90°: X_cam→Y_base, Y_cam→-X_base

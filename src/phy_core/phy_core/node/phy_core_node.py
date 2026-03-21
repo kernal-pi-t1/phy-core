@@ -13,9 +13,7 @@ Threading model:
     - ReentrantCallbackGroup for outbound clients
 """
 
-import math
 import time
-import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
@@ -31,6 +29,7 @@ except ImportError:
     FLANGE_SERIAL_DEPS = False
 from phy_interface.srv import Json, GetPose, CountObjects, VlmJudge
 from phy_interface.action import Move
+from phy_core.transform import CameraToBaseTransform
 
 _ZERO_POSE = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -73,7 +72,7 @@ class OrchestrationNode(Node):
         camera_rpy_deg = list(
             self.get_parameter('camera_rpy').get_parameter_value().double_array_value
         )
-        self.camera_rpy_rad = [math.radians(v) for v in camera_rpy_deg]
+        self._cam_to_base = CameraToBaseTransform(self.camera_offset, camera_rpy_deg)
         self.get_logger().info(f'Camera offset: {self.camera_offset}, rpy(deg): {camera_rpy_deg}')
 
         # --- Service server (entry point) ---
@@ -173,51 +172,9 @@ class OrchestrationNode(Node):
     # ------------------------------------------------------------------
     # Coordinate Transform Helper (Fixed Camera → Base Frame)
     # ------------------------------------------------------------------
-    @staticmethod
-    def _euler_to_rot_matrix(roll, pitch, yaw):
-        """Euler XYZ (rad) → 3x3 rotation matrix."""
-        cr, sr = math.cos(roll), math.sin(roll)
-        cp, sp = math.cos(pitch), math.sin(pitch)
-        cy, sy = math.cos(yaw), math.sin(yaw)
-        return np.array([
-            [cy*cp,  cy*sp*sr - sy*cr,  cy*sp*cr + sy*sr],
-            [sy*cp,  sy*sp*sr + cy*cr,  sy*sp*cr - cy*sr],
-            [  -sp,             cp*sr,             cp*cr],
-        ])
-
     def _transform_pose(self, camera_pose_arr):
-        """Transform float64[6] pose from camera optical frame to base frame.
-
-        Uses fixed camera extrinsics (camera_offset, camera_rpy) from YAML.
-        Camera optical frame convention: X-right, Y-down, Z-forward(depth).
-        """
-        obj_cam = np.array(camera_pose_arr[:3])
-
-        # Camera optical frame → base frame rotation
-        R_cam = self._euler_to_rot_matrix(*self.camera_rpy_rad)
-
-        # Position: rotate then translate
-        obj_base = R_cam @ obj_cam + np.array(self.camera_offset)
-
-        # Orientation: compose rotations
-        R_obj_cam = self._euler_to_rot_matrix(
-            camera_pose_arr[3], camera_pose_arr[4], camera_pose_arr[5]
-        )
-        R_obj_base = R_cam @ R_obj_cam
-
-        # Extract Euler XYZ from composed rotation
-        pitch = math.asin(np.clip(-R_obj_base[2, 0], -1.0, 1.0))
-        if abs(math.cos(pitch)) > 1e-6:
-            roll = math.atan2(R_obj_base[2, 1], R_obj_base[2, 2])
-            yaw = math.atan2(R_obj_base[1, 0], R_obj_base[0, 0])
-        else:
-            roll = math.atan2(-R_obj_base[1, 2], R_obj_base[1, 1])
-            yaw = 0.0
-
-        transformed = [
-            float(obj_base[0]), float(obj_base[1]), float(obj_base[2]),
-            float(roll), float(pitch), float(yaw),
-        ]
+        """Transform float64[6] pose from camera optical frame to base frame."""
+        transformed = self._cam_to_base.transform_pose(camera_pose_arr)
         self.get_logger().info(
             f'[Transform] cam={camera_pose_arr[:3]} → base={transformed[:3]}'
         )
