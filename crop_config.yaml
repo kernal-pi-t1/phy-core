@@ -1,10 +1,10 @@
 crop:
-  height: 319
-  width: 315
-  x1: 79
-  x2: 394
-  y1: 21
-  y2: 340
+  height: 328
+  width: 333
+  x1: 260
+  x2: 593
+  y1: 115
+  y2: 443
 original_image_shape:
   height: 480
   width: 640
