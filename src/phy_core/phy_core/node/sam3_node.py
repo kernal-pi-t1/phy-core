@@ -17,7 +17,7 @@ import threading
 import rclpy
 from rclpy.node import Node
 
-from phy_interface.srv import GetPose
+from phy_interface.srv import GetPose, CountObjects
 
 
 class Sam3Node(Node):
@@ -69,12 +69,15 @@ class Sam3Node(Node):
         # Lock for thread safety (SAM3 GPU model is not thread-safe)
         self._lock = threading.Lock()
 
-        # Service server
+        # Service servers
         self._get_pose_srv = self.create_service(
             GetPose, 'get_pose', self._get_pose_callback
         )
+        self._count_objects_srv = self.create_service(
+            CountObjects, 'count_objects', self._count_objects_callback
+        )
 
-        self.get_logger().info('sam3_node ready. Service: get_pose')
+        self.get_logger().info('sam3_node ready. Services: get_pose, count_objects')
 
     def _get_pose_callback(self, request, response):
         """Capture image, run SAM3, return first detected pose or all zeros."""
@@ -88,12 +91,13 @@ class Sam3Node(Node):
                     color_bgr, depth_mm, intrinsics,
                     prompt=object_name, is_bgr=True
                 )
+            response.detected_count = len(poses)
             if poses:
                 p = poses[0]
                 bx, by, bz = self._camera_to_base(p.x, p.y, p.z)
                 response.pose = [bx, by, bz, p.roll, p.pitch, p.yaw]
                 self.get_logger().info(
-                    f'Detected (base): x={bx:.4f} y={by:.4f} z={bz:.4f} '
+                    f'Detected {len(poses)} object(s) (base): x={bx:.4f} y={by:.4f} z={bz:.4f} '
                     f'r={p.roll:.2f} p={p.pitch:.2f} y={p.yaw:.2f}'
                 )
             else:
@@ -102,6 +106,25 @@ class Sam3Node(Node):
         except Exception as e:
             self.get_logger().error(f'get_pose failed: {e}')
             response.pose = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return response
+
+    def _count_objects_callback(self, request, response):
+        """Capture image, run SAM3, return detected object count."""
+        object_name = request.method
+        self.get_logger().info(f"count_objects called for: '{object_name}'")
+        try:
+            with self._lock:
+                depth_mm, color_bgr = self._capture()
+                intrinsics = (self.fx, self.fy, self.cx, self.cy)
+                poses = self._estimator.estimate_poses(
+                    color_bgr, depth_mm, intrinsics,
+                    prompt=object_name, is_bgr=True
+                )
+            response.detected_count = len(poses)
+            self.get_logger().info(f"count_objects: detected {len(poses)} object(s)")
+        except Exception as e:
+            self.get_logger().error(f'count_objects failed: {e}')
+            response.detected_count = 0
         return response
 
 
